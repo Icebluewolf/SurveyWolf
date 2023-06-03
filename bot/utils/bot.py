@@ -1,5 +1,5 @@
 import discord
-from bot.utils.database import database
+from utils.database import database
 from discord import Interaction
 
 

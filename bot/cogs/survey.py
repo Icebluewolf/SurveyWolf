@@ -2,10 +2,10 @@ import datetime
 import discord
 from discord import slash_command, Option
 from datetime import timedelta
-from bot.utils.timers import Timer
+from utils.timers import Timer
 from discord.ext import tasks, pages
-from bot.utils.database import database as db
-from bot.utils import embed_factory as ef
+from utils.database import database as db
+from utils import embed_factory as ef
 
 MAX_QUESTION_LENGTH = 45
 TF_to_YN = {True: "Yes", False: "No"}
@@ -201,7 +201,7 @@ class SetSettings(discord.ui.Modal):
                 color=0xD33033,
             )
             em.add_field(name="Errors", value="\n".join(errors))
-            await interaction.followup.send(embed=em, ephemeral=True)
+            await interaction.followup.send(embed=em)
 
 
 class SetQuestions(discord.ui.Modal):
@@ -408,14 +408,14 @@ class Survey(discord.Cog):
         ),
     ):
         if name == "No Surveys Found. Use /create To Make One":
-            ctx.send(embed=await ef.fail("I Told You You Needed To Use /create >:("), ephemeral=True)
+            return ctx.respond(embed=await ef.fail("I Told You You Needed To Use /create >:("), ephemeral=True)
 
         sql = """SELECT id AS template_id, guild_id, anonymous, editable, entries_per, total_entries, time_limit, name 
         FROM guild_surveys WHERE guild_id = $1 AND name = $2;"""
         survey = await db.fetch(sql, ctx.guild.id, name)
 
         if not survey:
-            return await ctx.send(
+            return await ctx.respond(
                 embed=await ef.fail("There Is No Survey With This Name. Try Selecting One Of The Provided Options."),
                 ephemeral=True,
             )
@@ -485,13 +485,13 @@ class Survey(discord.Cog):
         ),
     ):
         if survey == "No Surveys Found. Use /create To Make One":
-            return await ctx.send(embed=await ef.fail("I Told You You Needed To Use /create >:("), ephemeral=True)
+            return await ctx.respond(embed=await ef.fail("I Told You You Needed To Use /create >:("), ephemeral=True)
 
         sql = """SELECT id FROM guild_surveys WHERE guild_id = $1 AND name = $2;"""
         survey_row = await db.fetch(sql, ctx.guild.id, survey)
 
         if not survey_row:
-            return await ctx.send(
+            return await ctx.respond(
                 embed=await ef.fail("There Is No Survey With This Name. Try Selecting One Of The Provided Options."),
                 ephemeral=True,
             )
@@ -519,6 +519,8 @@ class Survey(discord.Cog):
         else:
             return
         responses = await db.fetch(sql, survey_row[0]["id"])
+        if not responses:
+            return ctx.respond(embed=ef.fail("There Are No Responses To This Survey Yet"), ephemeral=True)
 
         # Splits The Responses Into Easily Readable Chunks.
         embeds = []

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from collections.abc import Callable
 
 # from main import bot
-from bot.utils.database import database
+from utils.database import database
 
 # bot.wait_until_ready()
 
