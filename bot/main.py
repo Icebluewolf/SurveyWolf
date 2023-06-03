@@ -1,6 +1,6 @@
 import os
 import discord
-from bot.utils.bot import SurveyWolf
+from utils.bot import SurveyWolf
 
 COGS = ["utility", "survey"]
 
