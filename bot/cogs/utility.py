@@ -1,6 +1,6 @@
 import discord
 from discord import slash_command
-from bot.utils import embed_factory as ef
+from utils import embed_factory as ef
 
 
 class Utility(discord.Cog):
@@ -9,7 +9,7 @@ class Utility(discord.Cog):
 
     @slash_command()
     async def ping(self, ctx):
-        await ctx.send(embed=await ef.error(str(self.bot.latency * 1000)), ephemeral=True)
+        await ctx.respond(embed=await ef.general("🏓 Ping", str(self.bot.latency * 1000)), ephemeral=True)
 
     @slash_command()
     async def info(self, ctx):
