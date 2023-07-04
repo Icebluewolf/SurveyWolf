@@ -7,7 +7,7 @@ COGS = ["utility", "survey"]
 intents = discord.Intents.default()
 
 try:
-    debug_guilds = [os.environ["debug_guilds"]]
+    debug_guilds = [int(os.environ["debug_guilds"])]
 except KeyError:
     debug_guilds = None
 

@@ -42,7 +42,8 @@ class Wizard(discord.ui.View):
                 discord.EmbedField(name="Survey Name", value=self.name),
                 discord.EmbedField(
                     name="Questions",
-                    value="\n".join([f"{n + 1}. " + x["text"] for n, x in enumerate(self.questions)]) or "No Questions",
+                    value="\n".join([f"{n + 1} - " + x["text"] for n, x in enumerate(self.questions)]) or "No "
+                                                                                                          "Questions",
                     inline=True,
                 ),
                 discord.EmbedField(
@@ -71,16 +72,6 @@ class Wizard(discord.ui.View):
         self.questions.insert(
             position, {"text": text, "type": input_type, "required": required, "position": len(self.questions) + 1}
         )
-        # self.embed.set_field_at(1,
-        #                         name="Questions",
-        #                         value="\n".join([f"{n + 1}. " + x["text"] for n, x in enumerate(self.questions)]),
-        #                         inline=True,
-        #                         )
-        # self.embed.set_field_at(2,
-        #                         name="Required",
-        #                         value="\n".join([str(x["required"]) for x in self.questions]),
-        #                         inline=True)
-        # await interaction.response.edit_message(view=self, embed=self.embed)
 
     async def delete_question(self, position: int):
         self.questions.pop(position)
@@ -107,9 +98,9 @@ class Wizard(discord.ui.View):
 
     @discord.ui.button(label="Save And Exit", style=discord.ButtonStyle.green)
     async def save(self, button, interaction):
-        await interaction.response.defer()
         if not self.questions:
             return await interaction.response.send_message("Please Set At Least One Question", ephemeral=True)
+        await interaction.response.defer()
         sql = """INSERT INTO guild_surveys (guild_id, anonymous, editable, entries_per, total_entries, time_limit, name)
         VALUES ($1, $2, $3, $4, $5, $6, $7);"""
         await db.execute(
@@ -133,7 +124,7 @@ class Wizard(discord.ui.View):
         )
         self.disable_all_items()
         self.stop()
-        return await interaction.original_response().edit("The Survey Was Saved", view=self, embed=self.embed)
+        await interaction.edit_original_response(content="The Survey Was Saved", view=self, embed=self.embed)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id == self.user_id:
@@ -271,6 +262,11 @@ class EditQuestions(discord.ui.View):
 
     @discord.ui.button(label="Add Question", style=discord.ButtonStyle.green, emoji="➕", row=1)
     async def add_question_btn(self, button: discord.Button, interaction: discord.Interaction):
+        print(self.wiz.questions)
+        if len(self.wiz.questions) >= 5:
+            return await interaction.response.send_message(embed=await ef.fail("You Cannot Have More Then 5 "
+                                                                               "Questions. I Know It Is Dumb But "
+                                                                               "There Is Not A Good Way To Get Around It Currently. A Work Around Will Be Added In The Future. Blame Discord"), ephemeral=True)
         modal = AddQuestion(self.wiz)
         await interaction.response.send_modal(modal)
         await modal.wait()
@@ -340,9 +336,13 @@ class EditQuestions(discord.ui.View):
 
     @discord.ui.button(label="Delete Question", style=discord.ButtonStyle.red, emoji="➖", row=1)
     async def delete(self, button: discord.Button, interaction: discord.Interaction):
+        if self.current_pos is None or len(self.wiz.questions) == 0:
+            return await interaction.response.send_message(
+                embed=await ef.fail("You Do Not Have A Question Selected"), ephemeral=True
+            )
         await self.wiz.delete_question(self.current_pos)
         self.current_pos = 0
-        self.selector.update(self.wiz.questions, int(self.selector.values[0]))
+        self.selector.update(self.wiz.questions, int(self.selector.options[0].value))
         await self.wiz.update_embed()
         await interaction.response.edit_message(view=self)
 
@@ -539,7 +539,8 @@ class Survey(discord.Cog):
                 discord.EmbedField(name="Required", value="", inline=True),
                 discord.EmbedField(name="Type", value="", inline=True),
                 discord.EmbedField(
-                    name="User Settings", value="Anonymous: Yes\nNumber Of Entries Per Person: 1\nEdit Responses: No"
+                    name="User Settings",
+                    value="**[WIP]** Anonymous: No\nNumber Of Entries Per Person: 1\n**[WIP]** Edit " "Responses: No",
                 ),
                 discord.EmbedField(
                     name="Survey Settings",
