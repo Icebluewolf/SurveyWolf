@@ -3,16 +3,17 @@ from discord.ext.pages import Paginator
 
 
 async def _paginate(em: discord.Embed, value: str | list[tuple]) -> list[str]:
-
     async def get_chunks(text: str) -> list[str]:
         # Total Characters In An Embed Can Be Maximum Of 6000
         # I Am limiting Chunks To 4096 Even If There Is Extra Space So I Can Use Description
         max_chunk_size = min(4096, 6000 - total_chars)
         chunks = []
         while len(text) > max_chunk_size:
-            delimiter_index = max(text.rfind('\n', 0, max_chunk_size), text.rfind('.', 0, max_chunk_size))
+            delimiter_index = max(
+                text.rfind("\n", 0, max_chunk_size), text.rfind(".", 0, max_chunk_size)
+            )
             if delimiter_index == -1:
-                delimiter_index = text.rfind(' ', 0, max_chunk_size)
+                delimiter_index = text.rfind(" ", 0, max_chunk_size)
                 if delimiter_index == -1:
                     delimiter_index = max_chunk_size
             chunks.append(text[:delimiter_index])
@@ -36,8 +37,6 @@ async def _paginate(em: discord.Embed, value: str | list[tuple]) -> list[str]:
                 pass
 
 
-
-
 async def error(traceback: str, **kwargs) -> discord.Embed:
     e = discord.Embed(color=0xFF0000, title="Error")
     e.set_footer(text="Report This In The Support Server")
@@ -46,7 +45,9 @@ async def error(traceback: str, **kwargs) -> discord.Embed:
 
 
 async def fail(message: str, **kwargs) -> discord.Embed:
-    return discord.Embed(color=0xD33033, title="You Can Not Do That", description=message)
+    return discord.Embed(
+        color=0xD33033, title="You Can Not Do That", description=message
+    )
 
 
 async def success(message: str = None, **kwargs) -> discord.Embed:

@@ -15,7 +15,10 @@ QUESTION_TYPES = {0: "Text"}
 
 def toggle_button(state: bool):
     state = not state
-    options = {True: [discord.ButtonStyle.green, "✅"], False: [discord.ButtonStyle.grey, "❌"]}
+    options = {
+        True: [discord.ButtonStyle.green, "✅"],
+        False: [discord.ButtonStyle.grey, "❌"],
+    }
     return state, options[state][0], options[state][1]
 
 
@@ -42,15 +45,26 @@ class Wizard(discord.ui.View):
                 discord.EmbedField(name="Survey Name", value=self.name),
                 discord.EmbedField(
                     name="Questions",
-                    value="\n".join([f"{n + 1} - " + x["text"] for n, x in enumerate(self.questions)]) or "No "
-                                                                                                          "Questions",
+                    value="\n".join(
+                        [
+                            f"{n + 1} - " + x["text"]
+                            for n, x in enumerate(self.questions)
+                        ]
+                    )
+                    or "No " "Questions",
                     inline=True,
                 ),
                 discord.EmbedField(
-                    name="Required", value="\n".join([str(x["required"]) for x in self.questions]), inline=True
+                    name="Required",
+                    value="\n".join([str(x["required"]) for x in self.questions]),
+                    inline=True,
                 ),
                 discord.EmbedField(
-                    name="Type", value="\n".join([QUESTION_TYPES[x["type"]] for x in self.questions]), inline=True
+                    name="Type",
+                    value="\n".join(
+                        [QUESTION_TYPES[x["type"]] for x in self.questions]
+                    ),
+                    inline=True,
                 ),
                 discord.EmbedField(
                     name="User Settings",
@@ -68,9 +82,17 @@ class Wizard(discord.ui.View):
         self.embed = em
         await self.message.edit(embed=em, view=self)
 
-    async def insert_question(self, position: int, text: str, input_type: int, required: bool):
+    async def insert_question(
+        self, position: int, text: str, input_type: int, required: bool
+    ):
         self.questions.insert(
-            position, {"text": text, "type": input_type, "required": required, "position": len(self.questions) + 1}
+            position,
+            {
+                "text": text,
+                "type": input_type,
+                "required": required,
+                "position": len(self.questions) + 1,
+            },
         )
 
     async def delete_question(self, position: int):
@@ -80,15 +102,27 @@ class Wizard(discord.ui.View):
     async def edit_questions(self, button, interaction):
         await interaction.response.send_message(view=EditQuestions(self))
 
-    @discord.ui.button(label="[WIP] Anonymous", style=discord.ButtonStyle.green, emoji="✅", disabled=True)
+    @discord.ui.button(
+        label="[WIP] Anonymous",
+        style=discord.ButtonStyle.green,
+        emoji="✅",
+        disabled=True,
+    )
     async def anon_toggle(self, button, interaction):
         self.anonymous, button.style, button.emoji = toggle_button(self.anonymous)
         await self.update_embed()
         return await interaction.response.edit_message(view=self, embed=self.embed)
 
-    @discord.ui.button(label="[WIP] Edit Responses", style=discord.ButtonStyle.grey, emoji="❌", disabled=True)
+    @discord.ui.button(
+        label="[WIP] Edit Responses",
+        style=discord.ButtonStyle.grey,
+        emoji="❌",
+        disabled=True,
+    )
     async def edit_toggle(self, button, interaction):
-        self.edit_responses, button.style, button.emoji = toggle_button(self.edit_responses)
+        self.edit_responses, button.style, button.emoji = toggle_button(
+            self.edit_responses
+        )
         await self.update_embed()
         return await interaction.response.edit_message(view=self, embed=self.embed)
 
@@ -99,7 +133,9 @@ class Wizard(discord.ui.View):
     @discord.ui.button(label="Save And Exit", style=discord.ButtonStyle.green)
     async def save(self, button, interaction):
         if not self.questions:
-            return await interaction.response.send_message("Please Set At Least One Question", ephemeral=True)
+            return await interaction.response.send_message(
+                "Please Set At Least One Question", ephemeral=True
+            )
         await interaction.response.defer()
         sql = """INSERT INTO guild_surveys (guild_id, anonymous, editable, entries_per, total_entries, time_limit, name)
         VALUES ($1, $2, $3, $4, $5, $6, $7);"""
@@ -124,7 +160,9 @@ class Wizard(discord.ui.View):
         )
         self.disable_all_items()
         self.stop()
-        await interaction.edit_original_response(content="The Survey Was Saved", view=self, embed=self.embed)
+        await interaction.edit_original_response(
+            content="The Survey Was Saved", view=self, embed=self.embed
+        )
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id == self.user_id:
@@ -132,7 +170,8 @@ class Wizard(discord.ui.View):
 
     async def on_check_failure(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_message(
-            "You Did Not Start This Wizard. Use `/create` To Get Started", ephemeral=True
+            "You Did Not Start This Wizard. Use `/create` To Get Started",
+            ephemeral=True,
         )
 
     async def on_timeout(self) -> None:
@@ -238,11 +277,17 @@ class QuestionSelector(discord.ui.Select):
         self.options = [
             discord.SelectOption(label=f"{n + 1}. {x['text']}", value=str(n))
             if n != default
-            else discord.SelectOption(label=f"{n + 1}. {x['text']}", value=str(n), default=True)
+            else discord.SelectOption(
+                label=f"{n + 1}. {x['text']}", value=str(n), default=True
+            )
             for n, x in enumerate(questions)
         ]
         if len(self.options) == 0:
-            self.options = [discord.SelectOption(label="No Questions Have Been Created Yet", value="-1")]
+            self.options = [
+                discord.SelectOption(
+                    label="No Questions Have Been Created Yet", value="-1"
+                )
+            ]
 
     async def callback(self, interaction: discord.Interaction):
         if int(self.values[0]) != -1:
@@ -260,13 +305,22 @@ class EditQuestions(discord.ui.View):
         self.selector = QuestionSelector(self.wiz.questions)
         self.add_item(self.selector)
 
-    @discord.ui.button(label="Add Question", style=discord.ButtonStyle.green, emoji="➕", row=1)
-    async def add_question_btn(self, button: discord.Button, interaction: discord.Interaction):
+    @discord.ui.button(
+        label="Add Question", style=discord.ButtonStyle.green, emoji="➕", row=1
+    )
+    async def add_question_btn(
+        self, button: discord.Button, interaction: discord.Interaction
+    ):
         print(self.wiz.questions)
         if len(self.wiz.questions) >= 5:
-            return await interaction.response.send_message(embed=await ef.fail("You Cannot Have More Then 5 "
-                                                                               "Questions. I Know It Is Dumb But "
-                                                                               "There Is Not A Good Way To Get Around It Currently. A Work Around Will Be Added In The Future. Blame Discord"), ephemeral=True)
+            return await interaction.response.send_message(
+                embed=await ef.fail(
+                    "You Cannot Have More Then 5 "
+                    "Questions. I Know It Is Dumb But "
+                    "There Is Not A Good Way To Get Around It Currently. A Work Around Will Be Added In The Future. Blame Discord"
+                ),
+                ephemeral=True,
+            )
         modal = AddQuestion(self.wiz)
         await interaction.response.send_modal(modal)
         await modal.wait()
@@ -275,11 +329,14 @@ class EditQuestions(discord.ui.View):
         await self.wiz.update_embed()
         await self.message.edit(view=self)
 
-    @discord.ui.button(emoji="⬆", label="Move Up", style=discord.ButtonStyle.primary, row=1)
+    @discord.ui.button(
+        emoji="⬆", label="Move Up", style=discord.ButtonStyle.primary, row=1
+    )
     async def move_up(self, button: discord.Button, interaction: discord.Interaction):
         if self.current_pos is None:
             return await interaction.response.send_message(
-                embed=await ef.fail("You Do Not Have A Question Selected"), ephemeral=True
+                embed=await ef.fail("You Do Not Have A Question Selected"),
+                ephemeral=True,
             )
         elif self.current_pos != 0:
             await self.wiz.insert_question(
@@ -295,14 +352,20 @@ class EditQuestions(discord.ui.View):
             await interaction.response.edit_message(view=self)
         else:
             await interaction.response.send_message(
-                embed=await ef.fail("This Question Is Already On The Top"), ephemeral=True
+                embed=await ef.fail("This Question Is Already On The Top"),
+                ephemeral=True,
             )
 
-    @discord.ui.button(emoji="🔃", label="Edit", style=discord.ButtonStyle.primary, row=1)
-    async def edit_question(self, button: discord.Button, interaction: discord.Interaction):
+    @discord.ui.button(
+        emoji="🔃", label="Edit", style=discord.ButtonStyle.primary, row=1
+    )
+    async def edit_question(
+        self, button: discord.Button, interaction: discord.Interaction
+    ):
         if self.current_pos is None:
             return await interaction.response.send_message(
-                embed=await ef.fail("You Do Not Have A Question Selected"), ephemeral=True
+                embed=await ef.fail("You Do Not Have A Question Selected"),
+                ephemeral=True,
             )
         modal = AddQuestion(self.wiz, self.current_pos)
         await interaction.response.send_modal(modal)
@@ -311,11 +374,14 @@ class EditQuestions(discord.ui.View):
         await self.wiz.update_embed()
         await self.message.edit(view=self)
 
-    @discord.ui.button(emoji="⬇", label="Move Down", style=discord.ButtonStyle.primary, row=1)
+    @discord.ui.button(
+        emoji="⬇", label="Move Down", style=discord.ButtonStyle.primary, row=1
+    )
     async def move_down(self, button: discord.Button, interaction: discord.Interaction):
         if self.current_pos is None:
             return await interaction.response.send_message(
-                embed=await ef.fail("You Do Not Have A Question Selected"), ephemeral=True
+                embed=await ef.fail("You Do Not Have A Question Selected"),
+                ephemeral=True,
             )
         elif self.current_pos != len(self.wiz.questions) - 1:
             await self.wiz.insert_question(
@@ -331,14 +397,18 @@ class EditQuestions(discord.ui.View):
             await interaction.response.edit_message(view=self)
         else:
             await interaction.response.send_message(
-                embed=await ef.fail("This Question Is Already On The Bottom"), ephemeral=True
+                embed=await ef.fail("This Question Is Already On The Bottom"),
+                ephemeral=True,
             )
 
-    @discord.ui.button(label="Delete Question", style=discord.ButtonStyle.red, emoji="➖", row=1)
+    @discord.ui.button(
+        label="Delete Question", style=discord.ButtonStyle.red, emoji="➖", row=1
+    )
     async def delete(self, button: discord.Button, interaction: discord.Interaction):
         if self.current_pos is None or len(self.wiz.questions) == 0:
             return await interaction.response.send_message(
-                embed=await ef.fail("You Do Not Have A Question Selected"), ephemeral=True
+                embed=await ef.fail("You Do Not Have A Question Selected"),
+                ephemeral=True,
             )
         await self.wiz.delete_question(self.current_pos)
         self.current_pos = 0
@@ -352,7 +422,8 @@ class EditQuestions(discord.ui.View):
 
     async def on_check_failure(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_message(
-            "You Did Not Start This Wizard. Use `/create` To Get Started", ephemeral=True
+            "You Did Not Start This Wizard. Use `/create` To Get Started",
+            ephemeral=True,
         )
 
     async def on_timeout(self) -> None:
@@ -370,7 +441,9 @@ class AddQuestion(discord.ui.Modal):
                 label="Question Text",
                 required=True,
                 max_length=MAX_QUESTION_LENGTH,
-                value=self.wiz.questions[self.pos]["text"] if self.pos is not None else None,
+                value=self.wiz.questions[self.pos]["text"]
+                if self.pos is not None
+                else None,
             )
         )
         self.add_item(
@@ -379,7 +452,9 @@ class AddQuestion(discord.ui.Modal):
                 required=True,
                 max_length=1,
                 placeholder='"t" (true) or "f" (false)',
-                value=("t" if self.wiz.questions[self.pos]["required"] else "f") if self.pos is not None else None,
+                value=("t" if self.wiz.questions[self.pos]["required"] else "f")
+                if self.pos is not None
+                else None,
             )
         )
 
@@ -390,14 +465,22 @@ class AddQuestion(discord.ui.Modal):
             req = False
         else:
             return await interaction.response.send_message(
-                embed=await ef.fail('Required Needs To Be Either "t" (True) Or "f" (False)'), ephemeral=True
+                embed=await ef.fail(
+                    'Required Needs To Be Either "t" (True) Or "f" (False)'
+                ),
+                ephemeral=True,
             )
         if self.pos is not None:
             await self.wiz.delete_question(self.pos)
         await self.wiz.insert_question(
-            self.pos if self.pos is not None else len(self.wiz.questions), self.children[0].value, 0, req
+            self.pos if self.pos is not None else len(self.wiz.questions),
+            self.children[0].value,
+            0,
+            req,
         )
-        await interaction.response.send_message(f"Question {'Added' if self.pos is None else 'Edited'}", ephemeral=True)
+        await interaction.response.send_message(
+            f"Question {'Added' if self.pos is None else 'Edited'}", ephemeral=True
+        )
 
 
 class SurveyModel(discord.ui.Modal):
@@ -434,11 +517,15 @@ class SurveyModel(discord.ui.Modal):
             [int(x.custom_id) for x in self.children],
             [x.value for x in self.children],
         )
-        await interaction.response.send_message("You Completed The Survey!", ephemeral=True)
+        await interaction.response.send_message(
+            "You Completed The Survey!", ephemeral=True
+        )
 
 
 class SurveyButton(discord.ui.View):
-    def __init__(self, survey, custom_id: str, end_time: datetime.datetime = None, **kwargs):
+    def __init__(
+        self, survey, custom_id: str, end_time: datetime.datetime = None, **kwargs
+    ):
         self.template_id: int = survey["template_id"]
         self.guild_id: int = survey["guild_id"]
         self.anon: int = survey["anonymous"]
@@ -451,7 +538,9 @@ class SurveyButton(discord.ui.View):
         super().__init__(**kwargs, timeout=None)
 
         # To Add The Custom ID The Button Needs To Be Created Manually
-        start_button = discord.ui.Button(label="Take Survey", style=discord.ButtonStyle.primary, custom_id=custom_id)
+        start_button = discord.ui.Button(
+            label="Take Survey", style=discord.ButtonStyle.primary, custom_id=custom_id
+        )
         start_button.callback = self.start_survey
         self.add_item(start_button)
 
@@ -463,7 +552,9 @@ class SurveyButton(discord.ui.View):
             self._message = interaction.message
         if self.end_time and self.end_time < datetime.datetime.now():
             await interaction.response.send_message(
-                embed=await ef.fail("This Survey Is Now Closed As The End Date Has Been Reached"),
+                embed=await ef.fail(
+                    "This Survey Is Now Closed As The End Date Has Been Reached"
+                ),
                 ephemeral=True,
             )
             return await self._close_survey()
@@ -475,7 +566,9 @@ class SurveyButton(discord.ui.View):
         if self.entries_per is not None and times_taken[0][0] is not None:
             if times_taken[0][0] >= self.entries_per:
                 return await interaction.response.send_message(
-                    embed=await ef.fail("You Have Taken This Survey The Maximum Number Of Times Allowed"),
+                    embed=await ef.fail(
+                        "You Have Taken This Survey The Maximum Number Of Times Allowed"
+                    ),
                     ephemeral=True,
                 )
 
@@ -496,7 +589,9 @@ class SurveyButton(discord.ui.View):
 
         sql = "SELECT text, type, position, required, id FROM questions WHERE survey_id=$1;"
         await interaction.response.send_modal(
-            SurveyModel(int(self.custom_id), self.name, await db.fetch(sql, self.template_id))
+            SurveyModel(
+                int(self.custom_id), self.name, await db.fetch(sql, self.template_id)
+            )
         )
 
     async def _close_survey(self):
@@ -520,14 +615,19 @@ class Survey(discord.Cog):
     async def create(
         self,
         ctx: discord.ApplicationContext,
-        name: discord.Option(str, description="The Name For This Survey", max_length=64, required=True),
+        name: discord.Option(
+            str, description="The Name For This Survey", max_length=64, required=True
+        ),
     ):
         # await ctx.defer()
         # Ensure That No Other Survey In The Guild Has The Same Name
         sql = """SELECT name FROM guild_surveys WHERE name=$1 AND guild_id=$2"""
         result = await db.fetch(sql, name, ctx.guild.id)
         if result:
-            return await ctx.respond(embed=await ef.fail("There Is Already A Survey With That Name"), ephemeral=True)
+            return await ctx.respond(
+                embed=await ef.fail("There Is Already A Survey With That Name"),
+                ephemeral=True,
+            )
 
         em = discord.Embed(
             title="Survey Creation Wizard",
@@ -540,7 +640,8 @@ class Survey(discord.Cog):
                 discord.EmbedField(name="Type", value="", inline=True),
                 discord.EmbedField(
                     name="User Settings",
-                    value="**[WIP]** Anonymous: No\nNumber Of Entries Per Person: 1\n**[WIP]** Edit " "Responses: No",
+                    value="**[WIP]** Anonymous: No\nNumber Of Entries Per Person: 1\n**[WIP]** Edit "
+                    "Responses: No",
                 ),
                 discord.EmbedField(
                     name="Survey Settings",
@@ -551,7 +652,9 @@ class Survey(discord.Cog):
         view = Wizard(em, ctx.author.id, name)
         await ctx.respond(embed=view.embed, view=view)
         if await view.wait():
-            await ctx.send_followup("Survey Creation Timed Out. Remember Only 15 Minutes Is Given")
+            await ctx.send_followup(
+                "Survey Creation Timed Out. Remember Only 15 Minutes Is Given"
+            )
 
     async def get_surveys(self, ctx: discord.AutocompleteContext):
         try:
@@ -564,7 +667,9 @@ class Survey(discord.Cog):
         if results == ["No Surveys Found. Use /create To Make One"]:
             return results
         else:
-            return [name for name in results if name.lower().startswith(ctx.value.lower())]
+            return [
+                name for name in results if name.lower().startswith(ctx.value.lower())
+            ]
 
     @tasks.loop(minutes=3)
     async def _clear_cache(self):
@@ -575,8 +680,18 @@ class Survey(discord.Cog):
     async def attach(
         self,
         ctx,
-        name: Option(str, name="survey", description="The Survey To Attach", autocomplete=get_surveys),
-        message: Option(str, name="message", description='The Message Above The "Take Survey" Button', required=False),
+        name: Option(
+            str,
+            name="survey",
+            description="The Survey To Attach",
+            autocomplete=get_surveys,
+        ),
+        message: Option(
+            str,
+            name="message",
+            description='The Message Above The "Take Survey" Button',
+            required=False,
+        ),
         time: Option(
             str,
             name="time_override",
@@ -586,7 +701,10 @@ class Survey(discord.Cog):
         ),
     ):
         if name == "No Surveys Found. Use /create To Make One":
-            return ctx.respond(embed=await ef.fail("I Told You You Needed To Use /create >:("), ephemeral=True)
+            return ctx.respond(
+                embed=await ef.fail("I Told You You Needed To Use /create >:("),
+                ephemeral=True,
+            )
 
         sql = """SELECT id AS template_id, guild_id, anonymous, editable, entries_per, total_entries, time_limit, name 
         FROM guild_surveys WHERE guild_id = $1 AND name = $2;"""
@@ -594,7 +712,9 @@ class Survey(discord.Cog):
 
         if not survey:
             return await ctx.respond(
-                embed=await ef.fail("There Is No Survey With This Name. Try Selecting One Of The Provided Options."),
+                embed=await ef.fail(
+                    "There Is No Survey With This Name. Try Selecting One Of The Provided Options."
+                ),
                 ephemeral=True,
             )
         end = Timer.str_time(time)
@@ -606,10 +726,14 @@ class Survey(discord.Cog):
 
         e = await ef.general(name, message)
         return await ctx.respond(
-            content="", embed=e, view=SurveyButton(survey[0], str(button_id[0]["id"]), end_time=end)
+            content="",
+            embed=e,
+            view=SurveyButton(survey[0], str(button_id[0]["id"]), end_time=end),
         )
 
-    @slash_command(description="Close A Survey Before The Time Limit Or Max Amount Of Entries Has Been Reached")
+    @slash_command(
+        description="Close A Survey Before The Time Limit Or Max Amount Of Entries Has Been Reached"
+    )
     @discord.default_permissions(manage_guild=True)
     async def close(
         self,
@@ -639,16 +763,25 @@ class Survey(discord.Cog):
             self.bot.persistent_views,
         )
         if not isinstance(view, SurveyButton):
-            return await ctx.respond(embed=await ef.fail("That Is Not A Message For A Survey"), ephemeral=True)
+            return await ctx.respond(
+                embed=await ef.fail("That Is Not A Message For A Survey"),
+                ephemeral=True,
+            )
         await view.close_survey(message)
-        return await ctx.respond(embed=await ef.success("The Survey Was Closed!"), ephemeral=True)
+        return await ctx.respond(
+            embed=await ef.success("The Survey Was Closed!"), ephemeral=True
+        )
 
     @slash_command(description="View The Results And Responses Of A Survey")
     @discord.default_permissions(manage_guild=True)
     async def results(
         self,
         ctx,
-        survey: Option(str, description="The Survey To See The Results Of", autocomplete=get_surveys),
+        survey: Option(
+            str,
+            description="The Survey To See The Results Of",
+            autocomplete=get_surveys,
+        ),
         grouped: Option(
             str,
             description="How Should The Results Be Grouped",
@@ -662,14 +795,19 @@ class Survey(discord.Cog):
         ),
     ):
         if survey == "No Surveys Found. Use /create To Make One":
-            return await ctx.respond(embed=await ef.fail("I Told You You Needed To Use /create >:("), ephemeral=True)
+            return await ctx.respond(
+                embed=await ef.fail("I Told You You Needed To Use /create >:("),
+                ephemeral=True,
+            )
 
         sql = """SELECT id FROM guild_surveys WHERE guild_id = $1 AND name = $2;"""
         survey_row = await db.fetch(sql, ctx.guild.id, survey)
 
         if not survey_row:
             return await ctx.respond(
-                embed=await ef.fail("There Is No Survey With This Name. Try Selecting One Of The Provided Options."),
+                embed=await ef.fail(
+                    "There Is No Survey With This Name. Try Selecting One Of The Provided Options."
+                ),
                 ephemeral=True,
             )
 
@@ -679,7 +817,8 @@ class Survey(discord.Cog):
 
         questions = {q["id"]: (q["position"], q["type"], q["text"]) for q in questions}
         survey_description = discord.Embed(
-            title=f"Results For {survey}", description="\n".join([f"{q[0]}. {q[2]}" for q in questions.values()])
+            title=f"Results For {survey}",
+            description="\n".join([f"{q[0]}. {q[2]}" for q in questions.values()]),
         )
 
         if grouped == "0":
@@ -698,7 +837,10 @@ class Survey(discord.Cog):
             return
         responses = await db.fetch(sql, survey_row[0]["id"])
         if not responses:
-            return await ctx.respond(embed=await ef.fail("There Are No Responses To This Survey Yet"), ephemeral=True)
+            return await ctx.respond(
+                embed=await ef.fail("There Are No Responses To This Survey Yet"),
+                ephemeral=True,
+            )
 
         # Splits The Responses Into Easily Readable Chunks.
         embeds = []

@@ -9,7 +9,10 @@ class Utility(discord.Cog):
 
     @slash_command()
     async def ping(self, ctx):
-        await ctx.respond(embed=await ef.general("🏓 Ping", str(self.bot.latency * 1000)), ephemeral=True)
+        await ctx.respond(
+            embed=await ef.general("🏓 Ping", str(self.bot.latency * 1000)),
+            ephemeral=True,
+        )
 
     @slash_command()
     async def info(self, ctx):
@@ -26,7 +29,11 @@ class Utility(discord.Cog):
 
         e = await ef.general(
             title=self.bot.user.name
-            + (f"#{self.bot.user.discriminator}" if self.bot.user.discriminator != "0" else ""),
+            + (
+                f"#{self.bot.user.discriminator}"
+                if self.bot.user.discriminator != "0"
+                else ""
+            ),
             message=desc,
         )
         e.add_field(
@@ -34,8 +41,12 @@ class Utility(discord.Cog):
             value="If You Have An Issue With The Bot Please Join The Support Server [Here]("
             'https://discord.gg/f39cJ9D/ "Survey Wolf Official Support Server")',
         )
-        e.add_field(name="Credits", value="Main Bot Developer: icewolfy (451848182327148554)")
-        e.add_field(name="Technical", value="Uses Python V3 And Pycord V2. Database: PostgreSQL")
+        e.add_field(
+            name="Credits", value="Main Bot Developer: icewolfy (451848182327148554)"
+        )
+        e.add_field(
+            name="Technical", value="Uses Python V3 And Pycord V2. Database: PostgreSQL"
+        )
         e.add_field(
             name="Hosting",
             value="Hosted On A [PloxHost](https://billing.plox.host/aff.php?aff=162 "
