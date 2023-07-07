@@ -655,6 +655,11 @@ class Survey(discord.Cog):
             await ctx.send_followup(
                 "Survey Creation Timed Out. Remember Only 15 Minutes Is Given"
             )
+        else:
+            try:
+                self.survey_name_cache[ctx.guild_id].append(name)
+            except KeyError:
+                self.survey_name_cache[ctx.guild_id] = [name]
 
     async def get_surveys(self, ctx: discord.AutocompleteContext):
         try:
@@ -879,6 +884,8 @@ class Survey(discord.Cog):
                 continue
             view = SurveyButton(row, custom_id=str(row["ags_id"]), end_time=time)
             self.bot.add_view(view)
+
+        self._clear_cache.start()
 
 
 def setup(bot):
