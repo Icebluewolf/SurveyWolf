@@ -42,9 +42,9 @@ class Database:
         await self._recycle(conn)
         return val
 
-    async def fetch(self, sql: str, *args) -> list[dict]:
+    async def fetch(self, sql: str, *args) -> list[asyncpg.Record]:
         conn = await self._acquire()
-        rows = await conn.fetch(sql, *args)
+        rows: list[asyncpg.Record] = await conn.fetch(sql, *args)
         await self._recycle(conn)
         return rows or []
 
