@@ -442,7 +442,7 @@ class CreationCog(discord.Cog):
             return await ctx.respond(embed=await ef.fail(f"No Survey Named `{name}` Found"), ephemeral=True)
         sql1 = "SELECT COUNT(*) FROM surveys.questions WHERE survey_id = $1;"
         sql2 = """
-        SELECT COUNT(*) FROM surveys.responses WHERE question_id IN 
+        SELECT COUNT(*) FROM surveys.question_response WHERE question IN 
         (SELECT id FROM surveys.questions WHERE survey_id=$1);
         """
         message = f"""This Survey Has: 
