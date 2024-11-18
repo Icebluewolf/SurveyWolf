@@ -145,7 +145,7 @@ class SurveyTemplate:
         self, interaction: discord.Interaction, encrypted_user_id: str, response_num: int, active_id: int
     ):
         text_group: list[TextQuestion] = []
-        for question in self.questions:
+        for question in sorted(self.questions, key=lambda x: x.position):
             if isinstance(question, TextQuestion):
                 text_group.append(question)
                 if len(text_group) == 5:

@@ -29,6 +29,8 @@ class SurveyQuestion(ABC):
         If the question is allowed to be submitted without a response.
     template: int
         The template that the question belongs to.
+    position: int
+        The position the question should be placed at when sorting
     """
 
     title: str
