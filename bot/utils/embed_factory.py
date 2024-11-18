@@ -54,5 +54,5 @@ async def success(message: str = None, **kwargs) -> discord.Embed:
     return discord.Embed(color=0x00FF00, title="Success!", description=message)
 
 
-async def general(title: str, message: str, **kwargs) -> discord.Embed:
+async def general(title: str, message: str = None, **kwargs) -> discord.Embed:
     return discord.Embed(color=0x30D3D0, title=title, description=message)

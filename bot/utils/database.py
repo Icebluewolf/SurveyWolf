@@ -1,8 +1,10 @@
+import json
+from contextlib import asynccontextmanager
 from os import environ
 import asyncpg
 
 from asyncpg.exceptions import InterfaceError
-
+from asyncpg.transaction import Transaction
 
 class Database:
     def __init__(self) -> None:
@@ -22,7 +24,13 @@ class Database:
     async def _acquire(self):
         if not self._connection_pool:
             await self.connect()
-        conn = await self._connection_pool.acquire()
+        conn: asyncpg.Connection = await self._connection_pool.acquire()
+        await conn.set_type_codec(
+            "jsonb",
+            encoder=json.dumps,
+            decoder=json.loads,
+            schema='pg_catalog',
+        )
         return conn
 
     async def _recycle(self, conn):
@@ -47,6 +55,23 @@ class Database:
         rows: list[asyncpg.Record] = await conn.fetch(sql, *args)
         await self._recycle(conn)
         return rows or []
+
+    async def fetch_one(self, sql: str, *args) -> asyncpg.Record | None:
+        conn = await self._acquire()
+        row: asyncpg.Record = await conn.fetchrow(sql, *args)
+        await self._recycle(conn)
+        return row
+
+    @asynccontextmanager
+    async def transaction(self) -> tuple[asyncpg.Connection, Transaction]:
+        conn = None
+        try:
+            conn = await self._acquire()
+            async with conn.transaction():
+                yield conn
+        finally:
+            if conn is not None:
+                await self._recycle(conn)
 
 
 database = Database()

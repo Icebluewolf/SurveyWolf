@@ -49,51 +49,9 @@ class Utility(discord.Cog):
         )
         e.add_field(
             name="Hosting",
-            value="Hosted On A [PloxHost](https://billing.plox.host/aff.php?aff=162 "
-            '"Affiliate Link") VPS Running Linux',
+            value="Hosted On *To Be Determined*",
         )
         await ctx.respond(embed=e, ephemeral=True)
-
-    @slash_command(guild_ids=[678359965081141286])
-    async def test(self, ctx):
-        await ctx.send(embed=await ef.general(title="respond", message=""))
-
-    def test_callback(self, printable):
-        print(printable)
-
-    @slash_command(guild_ids=[678359965081141286])
-    async def test2(self, ctx, cog: str):
-        print("Number Commands: ", sum(1 for _ in self.bot.walk_application_commands()))
-        self.bot.unload_extension(f"cogs.{cog}")
-        print("Number Commands: ", sum(1 for _ in self.bot.walk_application_commands()))
-        await self.bot.sync_commands()
-        print("Number Commands: ", sum(1 for _ in self.bot.walk_application_commands()))
-
-    # Testing For Making A Close Thread Listener
-    # @discord.Cog.listener()
-    # async def on_thread_update(self, before, after):
-    #     minutes_to_str = {60: "1 Hour", 1440: "24 Hours", 4320: "3 Days", 10080: "1 Week"}
-    #     description = ""
-    #     user = await after.guild.audit_logs(limit=1, action=discord.AuditLogAction.thread_update).flatten()
-    #     user = user[0].user
-    #
-    #     if before.archived and not after.archived:
-    #         # If A Message Was Sent That Caused The Unarchive No Need To Send A Message To Say Who Did It
-    #         print(before.total_message_sent)
-    #         print(after.total_message_sent)
-    #         if before.total_message_sent == after.total_message_sent:
-    #             description += "Reopened This Thread.\n"
-    #
-    #     if before.auto_archive_duration != after.auto_archive_duration:
-    #         description += f"Set The Auto Archive Time To {minutes_to_str[after.auto_archive_duration]}"
-    #
-    #     if description:
-    #         e = discord.Embed(title=f"Thread Updated By {user}", description=description)
-    #         await after.send(embed=e)
-    #
-    #     # Give warning message with original message instead. View to delete this message?
-    #     if after.starting_message is None:
-    #         await after.archive()
 
 
 def setup(bot):
