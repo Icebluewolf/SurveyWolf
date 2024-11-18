@@ -3,7 +3,7 @@ from cryptography.fernet import Fernet
 
 
 # TODO: Fernet Is Not Deterministic So It Will Not Work
-fernet = Fernet(os.environ['FERNET_KEY'])
+fernet = Fernet(os.environ["FERNET_KEY"])
 
 
 async def encrypt_id(id: int) -> str:

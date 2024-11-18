@@ -53,15 +53,32 @@ class TextQuestion(SurveyQuestion):
             SET text=$2, position=$3, survey_id=$4, required=$5, description=$6, type=$7, question_data=$8
             WHERE id=$1;
             """
-            await conn.execute(base_sql, self._id, self.title, position, self.template, self.required, self.description,
-                         QuestionType.TEXT.value, await self._create_data())
+            await conn.execute(
+                base_sql,
+                self._id,
+                self.title,
+                position,
+                self.template,
+                self.required,
+                self.description,
+                QuestionType.TEXT.value,
+                await self._create_data(),
+            )
         else:
             base_sql = """
             INSERT INTO surveys.questions (text, position, survey_id, required, description, type, question_data) 
             VALUES ($1, $2, $3, $4, $5, $6, $7);
             """
-            await conn.execute(base_sql, self.title, position, self.template, self.required, self.description,
-                             QuestionType.TEXT.value, await self._create_data())
+            await conn.execute(
+                base_sql,
+                self.title,
+                position,
+                self.template,
+                self.required,
+                self.description,
+                QuestionType.TEXT.value,
+                await self._create_data(),
+            )
 
     async def delete(self) -> None:
         sql = """DELETE FROM surveys.questions WHERE id=$1;"""
@@ -86,7 +103,9 @@ class TextQuestion(SurveyQuestion):
     #     WHERE questions.id=$1;"""
     #     return await TextQuestion.load(await db.fetch_one(sql, id))
 
-    async def save_response(self, conn: Connection, encrypted_user_id: str, response_num: int, active_id: int, response_id: int):
+    async def save_response(
+        self, conn: Connection, encrypted_user_id: str, response_num: int, active_id: int, response_id: int
+    ):
         sql = """INSERT INTO surveys.question_response (response, question, response_data) VALUES ($1, $2, $3);"""
         await conn.execute(sql, response_id, self._id, await self._create_response_data())
 
@@ -136,18 +155,18 @@ class GetTextQuestionInfo(GetBaseInfo):
             if 0 <= minimum <= 4000:
                 self.question.min_length = minimum
             else:
-                errors.append('Minimum Length Needs To Be Between 0 And 4000')
+                errors.append("Minimum Length Needs To Be Between 0 And 4000")
         except ValueError:
-            errors.append('Minimum Length Needs To Be A Number Between 0 And 4000. Do Not Use `,` Or `.`')
+            errors.append("Minimum Length Needs To Be A Number Between 0 And 4000. Do Not Use `,` Or `.`")
 
         try:
             maximum = int(self.children[3].value)
             if 1 <= maximum <= 4000:
                 self.question.min_length = maximum
             else:
-                errors.append('Maximum Length Needs To Be Between 1 And 4000')
+                errors.append("Maximum Length Needs To Be Between 1 And 4000")
         except ValueError:
-            errors.append('Maximum Length Needs To Be A Number Between 1 And 4000. Do Not Use `,` Or `.`')
+            errors.append("Maximum Length Needs To Be A Number Between 1 And 4000. Do Not Use `,` Or `.`")
 
         return errors
 
@@ -156,12 +175,14 @@ class GetResponse(discord.ui.Modal):
     def __init__(self, questions: list[TextQuestion]):
         super().__init__(title="Type Your Answer Below")
         for question in questions:
-            self.add_item(discord.ui.InputText(
-                label=question.title[:min(len(question.title), 45)],
-                min_length=question.min_length,
-                max_length=question.max_length,
-                required=question.required,
-            ))
+            self.add_item(
+                discord.ui.InputText(
+                    label=question.title[: min(len(question.title), 45)],
+                    min_length=question.min_length,
+                    max_length=question.max_length,
+                    required=question.required,
+                )
+            )
         self.questions = questions
         self.interaction = None
 

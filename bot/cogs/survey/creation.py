@@ -30,7 +30,7 @@ class Wizard(discord.ui.View):
         e = discord.Embed(
             title="Survey Creation Wizard",
             description="Edit the settings for your survey. Any option that is not filled will default to the "
-                        "displayed value or none.",
+            "displayed value or none.",
             fields=[
                 discord.EmbedField(name="Survey Name", value=self.template.title),
                 discord.EmbedField(
@@ -51,7 +51,7 @@ class Wizard(discord.ui.View):
                 discord.EmbedField(
                     name="Questions",
                     value="\n".join([await q.short_display() for q in self.template.questions]),
-                )
+                ),
             ],
         )
         return e
@@ -93,8 +93,7 @@ class Wizard(discord.ui.View):
     async def save(self, button, interaction):
         if not self.template.questions:
             return await interaction.response.send_message(
-                embed=await ef.fail("Please Set At Least One Question"),
-                ephemeral=True
+                embed=await ef.fail("Please Set At Least One Question"), ephemeral=True
             )
 
         await interaction.response.defer()
@@ -103,8 +102,7 @@ class Wizard(discord.ui.View):
         self.disable_all_items()
         self.stop()
         await interaction.edit_original_response(
-            view=self,
-            embeds=[await ef.general("The Survey Was Saved"), await self._create_embed()]
+            view=self, embeds=[await ef.general("The Survey Was Saved"), await self._create_embed()]
         )
         GUILD_TEMPLATE_CACHE.setdefault(self.template.guild_id, []).append(self.template)
 
@@ -128,7 +126,7 @@ class Wizard(discord.ui.View):
             embeds=[
                 self._create_embed(),
                 ef.general("Creation Timed Out", message),
-            ]
+            ],
         )
 
 
@@ -185,10 +183,12 @@ class SetSettings(discord.ui.Modal):
         if self.children[1].value.lower() == "none" or self.children[1].value == "":
             self.template.duration = None
         elif Timer.str_time(self.children[1].value).total_seconds() == 0:
-            errors.append("""
+            errors.append(
+                """
             You Entered A Value For Time But It Was Not Valid. The Format For Time Is `0s0m0h0d0w`. 
             You Can Put These In Any Order And Leave Out Any Unused Values.
-            """)
+            """
+            )
         else:
             self.template.duration = Timer.str_time(self.children[1].value)
 
@@ -214,7 +214,7 @@ class SetSettings(discord.ui.Modal):
             em = discord.Embed(
                 title="Some Settings Failed",
                 description="Below Are The Errors Of The Settings That Were Not Inputted Correctly. If "
-                            "There Is Not An Error The Setting Was Successfully Set.",
+                "There Is Not An Error The Setting Was Successfully Set.",
                 color=0xD33033,
             )
             em.add_field(name="Errors", value="\n".join(errors))
@@ -238,7 +238,7 @@ class EditQuestions(discord.ui.View):
         if self.current_pos == -1:
             return await ef.general(
                 title="Add A Question Below",
-                message="You Have Not Created A Question Yet. Please Use The Dropdown Below To Create One"
+                message="You Have Not Created A Question Yet. Please Use The Dropdown Below To Create One",
             )
         else:
             return await self.wiz.template.questions[self.current_pos].display()
@@ -303,14 +303,18 @@ class EditQuestions(discord.ui.View):
         await interaction.response.edit_message(view=self, embed=await self.create_question_embed())
 
     options = [
-        discord.SelectOption(label="Text Response", description="Allows The User To Type Whatever They Want",
-                             value=str(QuestionType.TEXT.value),
-                             emoji="📜",
-                             ),
-        discord.SelectOption(label="Multiple Choice", description="The User Must Choose From A List Of Options",
-                             value=str(QuestionType.MULTIPLE_CHOICE.value),
-                             emoji="🇦",
-                             ),
+        discord.SelectOption(
+            label="Text Response",
+            description="Allows The User To Type Whatever They Want",
+            value=str(QuestionType.TEXT.value),
+            emoji="📜",
+        ),
+        discord.SelectOption(
+            label="Multiple Choice",
+            description="The User Must Choose From A List Of Options",
+            value=str(QuestionType.MULTIPLE_CHOICE.value),
+            emoji="🇦",
+        ),
     ]
 
     @discord.ui.select(placeholder="Add New Question", options=options, row=4)
@@ -354,6 +358,7 @@ class QuestionSelector(discord.ui.Select):
         self.update(questions)
 
     if TYPE_CHECKING:
+
         @property
         def view(self) -> EditQuestions: ...
 
@@ -402,9 +407,9 @@ class CreationCog(discord.Cog):
     @slash_command(description="Opens The Form Creation Wizard")
     @discord.default_permissions(manage_guild=True)
     async def create(
-            self,
-            ctx: discord.ApplicationContext,
-            name: discord.Option(str, description="The Name For This Survey", max_length=64, required=True),
+        self,
+        ctx: discord.ApplicationContext,
+        name: discord.Option(str, description="The Name For This Survey", max_length=64, required=True),
     ):
         # await ctx.defer()
         # Ensure That No Other Survey In The Guild Has The Same Name
@@ -420,14 +425,14 @@ class CreationCog(discord.Cog):
     @slash_command(name="delete", description="Delete A Survey")
     @discord.default_permissions(manage_guild=True)
     async def delete_survey(
-            self,
-            ctx: discord.ApplicationContext,
-            name: Option(
-                str,
-                name="survey",
-                description="The Survey To Delete",
-                autocomplete=title_autocomplete,
-            ),
+        self,
+        ctx: discord.ApplicationContext,
+        name: Option(
+            str,
+            name="survey",
+            description="The Survey To Delete",
+            autocomplete=title_autocomplete,
+        ),
     ):
         for template in await get_templates(ctx.guild_id):
             if name == str(template._id) or name == template.title:
@@ -452,14 +457,14 @@ class CreationCog(discord.Cog):
     @slash_command(name="edit", description="Edit And Existing Survey")
     @discord.default_permissions(manage_guild=True)
     async def edit_survey(
-            self,
-            ctx: discord.ApplicationContext,
-            name: Option(
-                str,
-                name="survey",
-                description="The Survey To Edit",
-                autocomplete=title_autocomplete,
-            ),
+        self,
+        ctx: discord.ApplicationContext,
+        name: Option(
+            str,
+            name="survey",
+            description="The Survey To Edit",
+            autocomplete=title_autocomplete,
+        ),
     ):
         templates = await get_templates(ctx.guild_id)
         for template in templates:

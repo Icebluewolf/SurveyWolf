@@ -29,7 +29,5 @@ class SurveyWolf(discord.Bot, ABC):
     # def __init__(self, description=None, *args, **options):
     #     super().__init__(self, *args, **options)
 
-    async def get_application_context(
-        self, interaction: Interaction, cls=None
-    ) -> discord.ApplicationContext:
+    async def get_application_context(self, interaction: Interaction, cls=None) -> discord.ApplicationContext:
         return await super().get_application_context(interaction, cls=cls or AdvContext)

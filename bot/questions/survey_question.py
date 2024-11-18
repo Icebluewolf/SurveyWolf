@@ -85,7 +85,9 @@ class SurveyQuestion(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def save_response(self, conn: Connection, encrypted_user_id: str, response_num: int, active_id: int, response_id: int) -> None:
+    async def save_response(
+        self, conn: Connection, encrypted_user_id: str, response_num: int, active_id: int, response_id: int
+    ) -> None:
         raise NotImplementedError
 
     @classmethod
@@ -135,7 +137,7 @@ class GetBaseInfo(discord.ui.Modal):
         elif self.children[1].value.lower() == "f":
             self.question.required = False
         else:
-            return ["Required Needs To Be Either \"t\" (True) Or \"f\" (False)"]
+            return ['Required Needs To Be Either "t" (True) Or "f" (False)']
 
     async def callback(self, interaction: discord.Interaction):
         errors = await self.process()
@@ -151,4 +153,5 @@ class GetBaseInfo(discord.ui.Modal):
 async def from_db(row) -> SurveyQuestion:
     if row["type"] == QuestionType.TEXT.value:
         from questions.text_question import TextQuestion
+
         return await TextQuestion.fetch(row["id"])

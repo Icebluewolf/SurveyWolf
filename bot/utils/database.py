@@ -6,6 +6,7 @@ import asyncpg
 from asyncpg.exceptions import InterfaceError
 from asyncpg.transaction import Transaction
 
+
 class Database:
     def __init__(self) -> None:
         self._connection_pool = None
@@ -29,7 +30,7 @@ class Database:
             "jsonb",
             encoder=json.dumps,
             decoder=json.loads,
-            schema='pg_catalog',
+            schema="pg_catalog",
         )
         return conn
 

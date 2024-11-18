@@ -54,7 +54,7 @@ class ActiveSurvey:
         v = ActiveSurveyView(self)
         await interaction.channel.send(
             embeds=[await ef.general("Take The Survey Below!", message=message), await self.template.summary(self.end)],
-            view=v
+            view=v,
         )
         await self.start_timer(v.end_survey)
 
@@ -113,8 +113,10 @@ class SurveyButton(discord.ui.Button):
         if times_taken >= template.entries_per_user:
             return await interaction.respond(
                 embed=await ef.fail(
-                    f"You Have Taken The Survey The Maximum Amount Of Times (`{template.entries_per_user}`)"),
-                ephemeral=True)
+                    f"You Have Taken The Survey The Maximum Amount Of Times (`{template.entries_per_user}`)"
+                ),
+                ephemeral=True,
+            )
 
         # Check If The Maximum Number Of Survey Responses Has Been Reached
         if template.max_entries is not None:
@@ -123,14 +125,20 @@ class SurveyButton(discord.ui.Button):
             total_responses = await db.fetchval(sql, self.view.survey._id)
             if total_responses > template.max_entries:
                 await self.view.end_survey()
-                return await interaction.respond(embed=await ef.fail("Sorry! This Survey Has Reached The Maximum Amount Of Entries"), ephemeral=True)
+                return await interaction.respond(
+                    embed=await ef.fail("Sorry! This Survey Has Reached The Maximum Amount Of Entries"), ephemeral=True
+                )
 
         # Finally Send The Survey
-        await self.view.survey.template.send_questions(interaction, self.encrypted_user_id, times_taken + 1, self.view.survey._id)
+        await self.view.survey.template.send_questions(
+            interaction, self.encrypted_user_id, times_taken + 1, self.view.survey._id
+        )
 
     if TYPE_CHECKING:
+
         @property
-        def view(self) -> ActiveSurveyView: pass
+        def view(self) -> ActiveSurveyView:
+            pass
 
 
 async def load_active_surveys():
@@ -144,4 +152,3 @@ async def load_active_surveys():
         await s.start_timer(v.end_survey)
         views.append(v)
     return views
-

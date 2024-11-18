@@ -11,16 +11,24 @@ class ActiveSurveyCommands(Cog):
         self.bot = bot
 
     @slash_command()
-    async def send(self, ctx: ApplicationContext,
-                   name: Option(str, autocomplete=title_autocomplete, description="The Survey Template To Send"),
-                   message: Option(str, description="A Message To Accompany The Survey", required=False, default=None),
-                   duration_override: Option(str, description="An Override For The Default Time Of The Template", required=False, default=None),
-                   ):
+    async def send(
+        self,
+        ctx: ApplicationContext,
+        name: Option(str, autocomplete=title_autocomplete, description="The Survey Template To Send"),
+        message: Option(str, description="A Message To Accompany The Survey", required=False, default=None),
+        duration_override: Option(
+            str, description="An Override For The Default Time Of The Template", required=False, default=None
+        ),
+    ):
         if duration_override:
             duration_override = Timer.str_time(duration_override)
             if duration_override.total_seconds() == 0:
-                return await ctx.respond(embed=ef.fail("""You Entered A Value For `Duration Override` But It Was Not Valid. The Format For Time Is `0s0m0h0d0w`. 
-            You Can Put These In Any Order And Leave Out Any Unused Values."""))
+                return await ctx.respond(
+                    embed=ef.fail(
+                        """You Entered A Value For `Duration Override` But It Was Not Valid. The Format For Time Is `0s0m0h0d0w`. 
+            You Can Put These In Any Order And Leave Out Any Unused Values."""
+                    )
+                )
 
         templates = await get_templates(ctx.guild_id)
         for template in templates:
@@ -31,8 +39,10 @@ class ActiveSurveyCommands(Cog):
         if template.duration is None and duration_override is None:
             return await ctx.respond(
                 embed=await ef.fail(
-                    "You Must Set A `duration_override` If The Survey Does Not Have A Default Duration"),
-                ephemeral=True)
+                    "You Must Set A `duration_override` If The Survey Does Not Have A Default Duration"
+                ),
+                ephemeral=True,
+            )
         survey = ActiveSurvey(template, duration_override)
         await survey.save()
         await survey.send(ctx.interaction, message)

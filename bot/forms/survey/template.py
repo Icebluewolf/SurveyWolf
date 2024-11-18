@@ -86,8 +86,17 @@ class SurveyTemplate:
                 SET title=$2, description=$3, anonymous=$4, entries_per=$5, time_limit=$6, max_entries=$7, editable=$8
                 WHERE id=$1;
                 """
-                await conn.execute(sql, self._id, self.title, self.description, self.anonymous.value, self.entries_per_user,
-                                 self.duration, self.max_entries, self.editable_responses)
+                await conn.execute(
+                    sql,
+                    self._id,
+                    self.title,
+                    self.description,
+                    self.anonymous.value,
+                    self.entries_per_user,
+                    self.duration,
+                    self.max_entries,
+                    self.editable_responses,
+                )
             else:
                 sql = """
                 INSERT INTO surveys.template 
@@ -95,9 +104,17 @@ class SurveyTemplate:
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 RETURNING id;
                 """
-                self._id = await conn.fetchval(sql, self.guild_id, self.title, self.description, self.anonymous.value,
-                                             self.entries_per_user, self.duration, self.max_entries,
-                                             self.editable_responses)
+                self._id = await conn.fetchval(
+                    sql,
+                    self.guild_id,
+                    self.title,
+                    self.description,
+                    self.anonymous.value,
+                    self.entries_per_user,
+                    self.duration,
+                    self.max_entries,
+                    self.editable_responses,
+                )
 
             for n, question in enumerate(self.questions):
                 question.template = self._id
@@ -120,11 +137,13 @@ class SurveyTemplate:
 - Entries Per User: {self.entries_per_user}
 - Can Edit Responses: {self.editable_responses}
 {f"- Will Close Early If `{self.max_entries}` Entries Are Recorded" if self.max_entries else ""}
-            """
+            """,
         )
         return e
 
-    async def send_questions(self, interaction: discord.Interaction, encrypted_user_id: str, response_num: int, active_id: int):
+    async def send_questions(
+        self, interaction: discord.Interaction, encrypted_user_id: str, response_num: int, active_id: int
+    ):
         text_group: list[TextQuestion] = []
         for question in self.questions:
             if isinstance(question, TextQuestion):

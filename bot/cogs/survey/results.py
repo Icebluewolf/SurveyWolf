@@ -15,24 +15,24 @@ class ResultsCog(discord.Cog):
     @slash_command(description="View The Results And Responses Of A Survey")
     @discord.default_permissions(manage_guild=True)
     async def results(
-            self,
-            ctx,
-            name: Option(
-                str,
-                description="The Survey To See The Results Of",
-                autocomplete=title_autocomplete,
-            ),
-            grouped: Option(
-                str,
-                description="How Should The Results Be Grouped",
-                choices=[
-                    discord.OptionChoice("By Question", "0"),
-                    discord.OptionChoice("By Response", "1"),
-                    # discord.OptionChoice("By Survey Instance", "2"),
-                ],
-                required=False,
-                default="0",
-            ),
+        self,
+        ctx,
+        name: Option(
+            str,
+            description="The Survey To See The Results Of",
+            autocomplete=title_autocomplete,
+        ),
+        grouped: Option(
+            str,
+            description="How Should The Results Be Grouped",
+            choices=[
+                discord.OptionChoice("By Question", "0"),
+                discord.OptionChoice("By Response", "1"),
+                # discord.OptionChoice("By Survey Instance", "2"),
+            ],
+            required=False,
+            default="0",
+        ),
     ):
         await ctx.defer(ephemeral=True)
         templates = await get_templates(ctx.guild_id)
@@ -76,7 +76,9 @@ class ResultsCog(discord.Cog):
                     e.description += response + "\n"
                 if len(e.description) != 0:
                     embeds.append(pages.Page(embeds=[question_embed, e]))
-                page_groups.append(pages.PageGroup(label=question.title, description=question.description, pages=embeds))
+                page_groups.append(
+                    pages.PageGroup(label=question.title, description=question.description, pages=embeds)
+                )
 
             pgn = pages.Paginator(pages=page_groups, show_menu=True)
             await pgn.respond(ctx.interaction, ephemeral=True)
@@ -95,7 +97,9 @@ class ResultsCog(discord.Cog):
 
             response_map = {}
             for response in responses:
-                response_map.setdefault((response["id"], response["response_num"]), []).append((response["question"], response["response_data"]))
+                response_map.setdefault((response["id"], response["response_num"]), []).append(
+                    (response["question"], response["response_data"])
+                )
 
             question_map = {q._id: q for q in questions}
 
@@ -113,8 +117,7 @@ class ResultsCog(discord.Cog):
                     e.description += response + "\n"
                 if len(e.description) != 0:
                     embeds.append(pages.Page(embeds=[e]))
-                page_groups.append(
-                    pages.PageGroup(label=f"Response {n + 1}", pages=embeds))
+                page_groups.append(pages.PageGroup(label=f"Response {n + 1}", pages=embeds))
 
             pgn = pages.Paginator(pages=page_groups, show_menu=True)
             await pgn.respond(ctx.interaction, ephemeral=True)

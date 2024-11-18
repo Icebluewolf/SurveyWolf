@@ -9,9 +9,7 @@ async def _paginate(em: discord.Embed, value: str | list[tuple]) -> list[str]:
         max_chunk_size = min(4096, 6000 - total_chars)
         chunks = []
         while len(text) > max_chunk_size:
-            delimiter_index = max(
-                text.rfind("\n", 0, max_chunk_size), text.rfind(".", 0, max_chunk_size)
-            )
+            delimiter_index = max(text.rfind("\n", 0, max_chunk_size), text.rfind(".", 0, max_chunk_size))
             if delimiter_index == -1:
                 delimiter_index = text.rfind(" ", 0, max_chunk_size)
                 if delimiter_index == -1:
@@ -45,9 +43,7 @@ async def error(traceback: str, **kwargs) -> discord.Embed:
 
 
 async def fail(message: str, **kwargs) -> discord.Embed:
-    return discord.Embed(
-        color=0xD33033, title="You Can Not Do That", description=message
-    )
+    return discord.Embed(color=0xD33033, title="You Can Not Do That", description=message)
 
 
 async def success(message: str = None, **kwargs) -> discord.Embed:

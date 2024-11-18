@@ -1,6 +1,7 @@
 import os
 import discord
 from utils.bot import SurveyWolf
+
 COGS = ["utility", "survey.creation", "survey.active", "survey.results"]
 
 intents = discord.Intents.default()
