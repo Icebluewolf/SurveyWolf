@@ -162,7 +162,7 @@ class GetTextQuestionInfo(GetBaseInfo):
         try:
             maximum = int(self.children[3].value)
             if 1 <= maximum <= 4000:
-                self.question.min_length = maximum
+                self.question.max_length = maximum
             else:
                 errors.append("Maximum Length Needs To Be Between 1 And 4000")
         except ValueError:
