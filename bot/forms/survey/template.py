@@ -145,20 +145,26 @@ class SurveyTemplate:
         self, interaction: discord.Interaction, encrypted_user_id: str, response_num: int, active_id: int
     ):
         text_group: list[TextQuestion] = []
+        need_modal_transition: bool = False
         for question in sorted(self.questions, key=lambda x: x.position):
             if isinstance(question, TextQuestion):
                 text_group.append(question)
                 if len(text_group) == 5:
+                    interaction = await do_modal_transition(interaction, need_modal_transition)
                     interaction = await question.send_question(interaction, text_group)
                     text_group = []
+                    need_modal_transition = True
                 continue
 
             if len(text_group) > 0:
+                interaction = await do_modal_transition(interaction, need_modal_transition)
                 interaction = await text_group[-1].send_question(interaction, text_group)
                 text_group = []
+            need_modal_transition = False
 
             interaction = await question.send_question(interaction)
         if len(text_group) > 0:
+            interaction = await do_modal_transition(interaction, need_modal_transition)
             interaction = await text_group[-1].send_question(interaction, text_group)
 
         async with db.transaction() as conn:
@@ -168,6 +174,32 @@ class SurveyTemplate:
             for question in self.questions:
                 await question.save_response(conn, encrypted_user_id, response_num, active_id, response_id)
         await interaction.respond(embed=await ef.success("You Have Completed The Survey!"), ephemeral=True)
+
+
+class ModalTransition(discord.ui.View):
+    def __init__(self, interaction: discord.Interaction):
+        super().__init__()
+        self.old_interaction = interaction
+        self.new_interaction = None
+
+    @discord.ui.button(label="Continue With The Survey")
+    async def callback(self, button, interaction: discord.Interaction):
+        self.stop()
+        self.new_interaction = interaction
+
+    async def send(self):
+        e = await ef.general("To Continue Click The Button Below")
+        await self.old_interaction.respond(ephemeral=True, view=self, embed=e)
+
+
+async def do_modal_transition(interaction: discord.Interaction, needs: bool) -> discord.Interaction:
+    if not needs:
+        return interaction
+
+    view = ModalTransition(interaction)
+    await view.send()
+    await view.wait()
+    return view.new_interaction
 
 
 async def title_autocomplete(ctx: discord.AutocompleteContext):
