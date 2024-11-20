@@ -62,8 +62,8 @@ class ActiveSurvey:
         self._timer = Timer(self.end, callback)
 
     async def end_survey(self):
-        sql = """DELETE FROM surveys.active_guild_surveys WHERE id=$1"""
-        await db.execute(sql, self._id)
+        # sql = """DELETE FROM surveys.active_guild_surveys WHERE id=$1"""
+        # await db.execute(sql, self._id)
         await self._timer.cancel()
 
 
