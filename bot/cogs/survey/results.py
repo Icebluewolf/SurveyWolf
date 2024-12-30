@@ -80,7 +80,7 @@ class ResultsCog(discord.Cog):
                     pages.PageGroup(label=question.title, description=question.description, pages=embeds)
                 )
 
-            pgn = pages.Paginator(pages=page_groups, show_menu=True)
+            pgn = pages.Paginator(pages=page_groups, show_menu=True, timeout=840)
             await pgn.respond(ctx.interaction, ephemeral=True)
 
         elif grouped == "1":
@@ -105,21 +105,22 @@ class ResultsCog(discord.Cog):
 
             page_groups = []
             for n, group in enumerate(sorted(response_map.keys())):
-                # question_embed = await question.display()
+                response_embed = discord.Embed(title="Response ID", description=group[0])
                 e = discord.Embed(title="Responses", description="")
                 embeds = []
-                for response in response_map[group]:
+                for response in sorted(response_map[group], key=lambda x: question_map[x[0]].position):
                     question = question_map[response[0]]
-                    response = "- " + discord.utils.escape_markdown(await question.view_response(response[1]))
-                    if len(e.description) != 0 and len(e) + len(response) > 1024:
-                        embeds.append(pages.Page(embeds=[e]))
+                    response_text = f"**Question {question.position + 1}:** {await question.short_display()}"
+                    response_text += "\n- " + discord.utils.escape_markdown(await question.view_response(response[1]))
+                    if len(e.description) != 0 and len(e) + len(response_text) > 1024:
+                        embeds.append(pages.Page(embeds=[response_embed, e]))
                         e = discord.Embed(title="Responses", description="")
-                    e.description += response + "\n"
+                    e.description += response_text + "\n"
                 if len(e.description) != 0:
-                    embeds.append(pages.Page(embeds=[e]))
+                    embeds.append(pages.Page(embeds=[response_embed, e]))
                 page_groups.append(pages.PageGroup(label=f"Response {n + 1}", pages=embeds))
 
-            pgn = pages.Paginator(pages=page_groups, show_menu=True)
+            pgn = pages.Paginator(pages=page_groups, show_menu=True, timeout=840)
             await pgn.respond(ctx.interaction, ephemeral=True)
 
 
