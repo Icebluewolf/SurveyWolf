@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 import discord
 from discord import slash_command, Option
 
-from forms.survey.template import SurveyTemplate, title_autocomplete, get_templates, GUILD_TEMPLATE_CACHE
+from forms.survey.template import SurveyTemplate, title_autocomplete, get_templates
 from questions.survey_question import SurveyQuestion, QuestionType
 from questions.text_question import TextQuestion
 from utils import embed_factory as ef
@@ -104,7 +104,6 @@ class Wizard(discord.ui.View):
         await interaction.edit_original_response(
             view=self, embeds=[await ef.general("The Survey Was Saved"), await self._create_embed()]
         )
-        GUILD_TEMPLATE_CACHE.setdefault(self.template.guild_id, []).append(self.template)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id == self.user_id:
@@ -397,7 +396,6 @@ class DeleteSurveyConf(discord.ui.View):
             embed=await ef.success(f"The **{self.template.title}** Survey Was Deleted"), view=None
         )
         self.stop()
-        GUILD_TEMPLATE_CACHE[self.template.guild_id].remove(self.template)
 
 
 class CreationCog(discord.Cog):

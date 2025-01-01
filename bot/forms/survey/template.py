@@ -120,9 +120,15 @@ class SurveyTemplate:
                 question.template = self._id
                 await question.save(n, conn)
 
+        GUILD_TEMPLATE_CACHE.setdefault(self.guild_id, []).append(self)
+
     async def delete(self) -> None:
         sql = "DELETE FROM surveys.template WHERE guild_id=$1 AND id=$2;"
         await db.execute(sql, self.guild_id, self._id)
+        try:
+            GUILD_TEMPLATE_CACHE[self.guild_id].remove(self)
+        except ValueError | KeyError:
+            pass
 
     async def add_question(self, question: SurveyQuestion, pos: int) -> None:
         self.questions.insert(pos, question)
@@ -213,8 +219,11 @@ async def title_autocomplete(ctx: discord.AutocompleteContext):
     return match
 
 
-@cached(GUILD_TEMPLATE_CACHE)
 async def get_templates(guild_id: int) -> list[SurveyTemplate]:
-    sql = """SELECT * FROM surveys.template WHERE guild_id=$1;"""
-    rows = await db.fetch(sql, guild_id)
-    return [await SurveyTemplate.load(x) for x in rows]
+    try:
+        return GUILD_TEMPLATE_CACHE[guild_id]
+    except KeyError:
+        sql = """SELECT * FROM surveys.template WHERE guild_id=$1;"""
+        rows = await db.fetch(sql, guild_id)
+        GUILD_TEMPLATE_CACHE[guild_id] = [await SurveyTemplate.load(x) for x in rows]
+        return GUILD_TEMPLATE_CACHE[guild_id]
