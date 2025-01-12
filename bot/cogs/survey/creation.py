@@ -26,6 +26,8 @@ class Wizard(discord.ui.View):
         self.template = template
         self.user_id = user_id
 
+        self._edit_question_interaction: discord.Interaction | None = None
+
     async def _create_embed(self) -> discord.Embed:
         e = discord.Embed(
             title="Survey Creation Wizard",
@@ -59,7 +61,13 @@ class Wizard(discord.ui.View):
     async def edit_questions(self, button, interaction):
         editor = EditQuestions(self)
         await editor.update_button_state()
-        await interaction.response.send_message(
+        try:
+            if self._edit_question_interaction is not None:
+                await self._edit_question_interaction.delete_original_response()
+        except discord.errors.NotFound:
+            pass
+
+        self._edit_question_interaction = await interaction.response.send_message(
             view=editor,
             embed=await editor.create_question_embed(),
         )
@@ -352,7 +360,8 @@ class EditQuestions(discord.ui.View):
         )
 
     async def on_timeout(self) -> None:
-        await self.message.delete()
+        if self.message is not None:
+            await self.message.delete()
 
 
 class QuestionSelector(discord.ui.Select):
