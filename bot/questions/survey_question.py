@@ -148,7 +148,7 @@ class GetBaseInfo(discord.ui.Modal):
         self.stop()
         errors = await self.process()
         if errors:
-            await interaction.followup.send_message(
+            await interaction.followup.send(
                 embed=await ef.fail("\n".join(errors)),
                 ephemeral=True,
             )

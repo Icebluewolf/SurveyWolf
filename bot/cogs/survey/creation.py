@@ -279,9 +279,9 @@ class EditQuestions(discord.ui.View):
 
     @discord.ui.button(emoji="🔃", label="Edit", style=discord.ButtonStyle.primary, row=1, disabled=True)
     async def edit_question(self, button: discord.Button, interaction: discord.Interaction):
-        await self.wiz.template.questions[self.current_pos].set_up(interaction)
+        interaction = await self.wiz.template.questions[self.current_pos].set_up(interaction)
         self.question_selector.update(self.wiz.template.questions, default=self.current_pos)
-        await interaction.edit_original_response(view=self, embed=await self.create_question_embed())
+        await interaction.response.edit_message(view=self, embed=await self.create_question_embed())
 
     @discord.ui.button(emoji="⬇", label="Move Down", style=discord.ButtonStyle.primary, row=1, disabled=True)
     async def move_down(self, button: discord.Button, interaction: discord.Interaction):
