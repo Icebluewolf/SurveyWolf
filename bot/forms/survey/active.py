@@ -52,7 +52,7 @@ class ActiveSurvey:
 
     async def send(self, interaction: discord.Interaction, message: str):
         v = ActiveSurveyView(self)
-        await interaction.channel.send(
+        await interaction.followup.send(
             embeds=[await ef.general("Take The Survey Below!", message=message), await self.template.summary(self.end)],
             view=v,
         )

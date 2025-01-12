@@ -45,8 +45,8 @@ class ActiveSurveyCommands(Cog):
             )
         survey = ActiveSurvey(template, duration_override)
         await survey.save()
-        await survey.send(ctx.interaction, message)
         await ctx.interaction.respond(embed=await ef.success("The Survey Was Started"), ephemeral=True)
+        await survey.send(ctx.interaction, message)
 
     @Cog.listener(once=True)
     async def on_ready(self):
