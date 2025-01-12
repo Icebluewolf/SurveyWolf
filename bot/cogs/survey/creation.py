@@ -309,7 +309,7 @@ class EditQuestions(discord.ui.View):
             emoji="📜",
         ),
         discord.SelectOption(
-            label="Multiple Choice",
+            label="[Coming Soon] Multiple Choice",
             description="The User Must Choose From A List Of Options",
             value=str(QuestionType.MULTIPLE_CHOICE.value),
             emoji="🇦",
@@ -326,6 +326,11 @@ class EditQuestions(discord.ui.View):
         match int(select.values[0]):
             case QuestionType.TEXT.value:
                 question = TextQuestion("New Question", self.wiz.template._id)
+            case QuestionType.MULTIPLE_CHOICE.value:
+                return await interaction.respond(
+                    embed=await ef.fail("Multiple Choice Is Coming Soon!"),
+                    ephemeral=True,
+                )
             case _:
                 raise ValueError(f"Invalid Question Type {select.values[0]}")
         await self.wiz.template.add_question(question, self.current_pos + 1)
