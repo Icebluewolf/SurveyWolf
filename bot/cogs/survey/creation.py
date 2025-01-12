@@ -48,19 +48,12 @@ class Wizard(discord.ui.View):
                     Total Number Of Entries: {self.template.max_entries}
                     """,
                 ),
-                discord.EmbedField(
-                    name="Questions",
-                    value="\n".join([f"{n}. {await q.short_display()}" for n, q in enumerate(self.template.questions)]),
-                ),
             ],
         )
         return e
 
-    async def update_message(self, interaction: discord.Interaction = None) -> None:
-        if interaction is not None:
-            await interaction.response.edit_message(view=self, embed=await self._create_embed())
-        else:
-            await self.message.edit(view=self, embed=await self._create_embed())
+    async def update_message(self, interaction: discord.Interaction) -> None:
+        await interaction.response.edit_message(view=self, embed=await self._create_embed())
 
     @discord.ui.button(label="Edit Questions", style=discord.ButtonStyle.primary)
     async def edit_questions(self, button, interaction):
@@ -278,7 +271,6 @@ class EditQuestions(discord.ui.View):
         self.current_pos += direction
         self.question_selector.update(qs, self.current_pos)
         await self.update_button_state()
-        await self.wiz.update_message()
 
     @discord.ui.button(emoji="⬆", label="Move Up", style=discord.ButtonStyle.primary, row=1, disabled=True)
     async def move_up(self, button: discord.Button, interaction: discord.Interaction):
@@ -289,8 +281,7 @@ class EditQuestions(discord.ui.View):
     async def edit_question(self, button: discord.Button, interaction: discord.Interaction):
         await self.wiz.template.questions[self.current_pos].set_up(interaction)
         self.question_selector.update(self.wiz.template.questions, default=self.current_pos)
-        await self.message.edit(view=self, embed=await self.create_question_embed())
-        await self.wiz.update_message()
+        await interaction.edit_original_response(view=self, embed=await self.create_question_embed())
 
     @discord.ui.button(emoji="⬇", label="Move Down", style=discord.ButtonStyle.primary, row=1, disabled=True)
     async def move_down(self, button: discord.Button, interaction: discord.Interaction):
@@ -308,7 +299,6 @@ class EditQuestions(discord.ui.View):
         self.question_selector.update(self.wiz.template.questions, self.current_pos)
         await self.update_button_state()
         await interaction.response.edit_message(view=self, embed=await self.create_question_embed())
-        await self.wiz.update_message()
 
     options = [
         discord.SelectOption(
@@ -350,7 +340,6 @@ class EditQuestions(discord.ui.View):
         await self.update_button_state()
 
         await interaction.response.edit_message(view=self, embed=await self.create_question_embed())
-        await self.wiz.update_message()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id == self.wiz.user_id:
