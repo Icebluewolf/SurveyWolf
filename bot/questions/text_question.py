@@ -27,6 +27,7 @@ class TextQuestion(SurveyQuestion):
     async def display(self) -> discord.Embed:
         e = discord.Embed(title=self.title, description=self.description)
         e.add_field(name="Required", value=str(self.required))
+        e.add_field(name="Length", value=f"Between {self.min_length} And {self.max_length} Inclusive")
         return e
 
     async def short_display(self) -> str:
