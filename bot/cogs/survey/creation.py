@@ -343,13 +343,13 @@ class EditQuestions(discord.ui.View):
             case _:
                 raise ValueError(f"Invalid Question Type {select.values[0]}")
         await self.wiz.template.add_question(question, self.current_pos + 1)
-        await question.set_up(interaction)
+        interaction = await question.set_up(interaction)
 
         self.current_pos = self.current_pos + 1
         self.question_selector.update(self.wiz.template.questions, default=self.current_pos)
         await self.update_button_state()
 
-        await self.message.edit(view=self, embed=await self.create_question_embed())
+        await interaction.response.edit_message(view=self, embed=await self.create_question_embed())
         await self.wiz.update_message()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:

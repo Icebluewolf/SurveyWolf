@@ -91,10 +91,11 @@ class TextQuestion(SurveyQuestion):
         await modal.wait()
         return modal.interaction
 
-    async def set_up(self, interaction: discord.Interaction):
+    async def set_up(self, interaction: discord.Interaction) -> discord.Interaction:
         m = GetTextQuestionInfo(self)
         await interaction.response.send_modal(m)
         await m.wait()
+        return m.interaction
 
     # @classmethod
     # async def fetch(cls, id: int):

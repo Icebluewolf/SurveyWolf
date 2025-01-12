@@ -53,7 +53,7 @@ class SurveyQuestion(ABC):
         return await cls.load(await db.fetch_one(sql, id))
 
     @abstractmethod
-    async def set_up(self, interaction: discord.Interaction):
+    async def set_up(self, interaction: discord.Interaction) -> discord.Interaction:
         raise NotImplementedError
 
     @abstractmethod
@@ -111,6 +111,7 @@ class GetBaseInfo(discord.ui.Modal):
     def __init__(self, question: SurveyQuestion, title: str, *args, **kwargs):
         super().__init__(title=title, *args, **kwargs)
         self.question = question
+        self.interaction = None
 
         self.add_item(
             discord.ui.InputText(
@@ -142,14 +143,15 @@ class GetBaseInfo(discord.ui.Modal):
             return ['Required Needs To Be Either "t" (True) Or "f" (False)']
 
     async def callback(self, interaction: discord.Interaction):
+        # This interaction is grabbed and used by the thing that sent the modal
+        self.interaction = interaction
+        self.stop()
         errors = await self.process()
         if errors:
-            await interaction.response.send_message(
+            await interaction.followup.send_message(
                 embed=await ef.fail("\n".join(errors)),
                 ephemeral=True,
             )
-        else:
-            await interaction.respond(embed=await ef.success("Question Added!"), ephemeral=True)
 
 
 async def from_db(row) -> SurveyQuestion:
