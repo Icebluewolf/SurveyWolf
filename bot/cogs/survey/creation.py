@@ -130,7 +130,7 @@ class Wizard(discord.ui.View):
         await self.message.edit(
             view=None,
             embeds=[
-                self._create_embed(),
+                await self._create_embed(),
                 ef.general("Creation Timed Out", message),
             ],
         )
