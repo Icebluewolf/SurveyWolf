@@ -50,11 +50,17 @@ class Wizard(discord.ui.View):
                 ),
                 discord.EmbedField(
                     name="Questions",
-                    value="\n".join([await q.short_display() for q in self.template.questions]),
+                    value="\n".join([f"{n}. {await q.short_display()}" for n, q in enumerate(self.template.questions)]),
                 ),
             ],
         )
         return e
+
+    async def update_message(self, interaction: discord.Interaction = None) -> None:
+        if interaction is not None:
+            await interaction.response.edit_message(view=self, embed=await self._create_embed())
+        else:
+            await self.message.edit(view=self, embed=await self._create_embed())
 
     @discord.ui.button(label="Edit Questions", style=discord.ButtonStyle.primary)
     async def edit_questions(self, button, interaction):
@@ -73,7 +79,7 @@ class Wizard(discord.ui.View):
     )
     async def anon_toggle(self, button, interaction):
         self.template.anonymous, button.style, button.emoji = toggle_button(bool(self.template.anonymous))
-        return await interaction.response.edit_message(view=self, embed=await self._create_embed())
+        await self.update_message(interaction)
 
     @discord.ui.button(
         label="[WIP] Edit Responses",
@@ -83,7 +89,7 @@ class Wizard(discord.ui.View):
     )
     async def edit_toggle(self, button, interaction):
         self.template.editable_responses, button.style, button.emoji = toggle_button(self.template.editable_responses)
-        return await interaction.response.edit_message(view=self, embed=await self._create_embed())
+        await self.update_message(interaction)
 
     @discord.ui.button(label="Set Other Settings", style=discord.ButtonStyle.primary)
     async def set_misc(self, button, interaction):
@@ -208,7 +214,7 @@ class SetSettings(discord.ui.Modal):
                 errors.append(
                     "Total Number Of Entries Must Be A Whole Number (No Letters Or Symbols Including `.` And `,`)"
                 )
-        await interaction.response.edit_message(embed=await self.wiz._create_embed(), view=self.wiz)
+        await self.wiz.update_message(interaction)
         if errors:
             em = discord.Embed(
                 title="Some Settings Failed",
@@ -272,6 +278,7 @@ class EditQuestions(discord.ui.View):
         self.current_pos += direction
         self.question_selector.update(qs, self.current_pos)
         await self.update_button_state()
+        await self.wiz.update_message()
 
     @discord.ui.button(emoji="⬆", label="Move Up", style=discord.ButtonStyle.primary, row=1, disabled=True)
     async def move_up(self, button: discord.Button, interaction: discord.Interaction):
@@ -283,6 +290,7 @@ class EditQuestions(discord.ui.View):
         await self.wiz.template.questions[self.current_pos].set_up(interaction)
         self.question_selector.update(self.wiz.template.questions, default=self.current_pos)
         await self.message.edit(view=self, embed=await self.create_question_embed())
+        await self.wiz.update_message()
 
     @discord.ui.button(emoji="⬇", label="Move Down", style=discord.ButtonStyle.primary, row=1, disabled=True)
     async def move_down(self, button: discord.Button, interaction: discord.Interaction):
@@ -300,6 +308,7 @@ class EditQuestions(discord.ui.View):
         self.question_selector.update(self.wiz.template.questions, self.current_pos)
         await self.update_button_state()
         await interaction.response.edit_message(view=self, embed=await self.create_question_embed())
+        await self.wiz.update_message()
 
     options = [
         discord.SelectOption(
@@ -341,6 +350,7 @@ class EditQuestions(discord.ui.View):
         await self.update_button_state()
 
         await self.message.edit(view=self, embed=await self.create_question_embed())
+        await self.wiz.update_message()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id == self.wiz.user_id:
