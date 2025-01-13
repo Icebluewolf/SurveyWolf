@@ -121,10 +121,11 @@ class SurveyButton(discord.ui.Button):
 
         # Check If The Maximum Number Of Survey Responses Has Been Reached
         if template.max_entries is not None:
-            sql = """SELECT COUNT(*) FROM surveys.responses WHERE active_survey_id = $1 
-            GROUP BY user_id, response_num;"""
+            sql = """SELECT COUNT(*) FROM surveys.responses WHERE active_survey_id = $1;"""
             total_responses = await db.fetchval(sql, self.view.survey._id)
-            if total_responses > template.max_entries:
+            if total_responses is None:
+                total_responses = 0
+            if total_responses >= template.max_entries:
                 await self.view.end_survey()
                 return await interaction.respond(
                     embed=await ef.fail("Sorry! This Survey Has Reached The Maximum Amount Of Entries"), ephemeral=True
