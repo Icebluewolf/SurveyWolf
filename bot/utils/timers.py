@@ -4,38 +4,34 @@ from asyncio import sleep
 from datetime import datetime, timedelta
 from collections.abc import Callable
 
-# from main import bot
-from utils.database import database
 
-# bot.wait_until_ready()
-
-
-# load all the timers
 class Timer:
-    def __init__(self, duration: timedelta | str, callback: Callable, *args, **kwargs):
+    def __init__(self, time: timedelta | datetime | str, callback: Callable, *args, **kwargs):
         """
         Creates a timer that starts now and ends after the duration. Calls the function with args and kwargs on
         completion.
-        :param duration: When a string is given it will be parsed into a timedelta.
-        The string should be in the format ""
-        :param callback:
-        :param args:
-        :param kwargs:
+        :param time: When a string is given it will be parsed into a timedelta. An end time can also be given.
+        :param callback: The function to call on completion.
+        :param args: The arguments to pass to the callback function.
+        :param kwargs: The keyword arguments to pass to the callback function.
         """
-
-        if isinstance(duration, str):
-            duration = self.str_time(duration)
-
         self.start_time = datetime.now()
+        if isinstance(time, str):
+            duration = self.str_time(time)
+        elif isinstance(time, timedelta):
+            duration = time
+        elif isinstance(time, datetime):
+            duration = time - self.start_time
+        else:
+            raise ValueError("Time Must Be A str, timedelta, Or datetime Object")
+
         self.end_time: datetime = self.start_time + duration
         self.duration = duration
         self.callback = (callback, args, kwargs)
 
-        # Store timers
-        asyncio.create_task(self._store_timer())
-
         # Start Timer
-        self._task = asyncio.create_task(self._job())
+        if self.duration.total_seconds() > 0:
+            self._task = asyncio.create_task(self._job())
 
     @staticmethod
     def str_time(time: str) -> timedelta:
@@ -46,13 +42,10 @@ class Timer:
             seconds += int(match[0]) * letters[match[1]]
         return timedelta(seconds=seconds)
 
-    async def _store_timer(self):
-        sql = """INSERT INTO timers (type, duration, start_time, end_time) VALUES ($1, $2, $3)"""
-        await database.execute(sql, self.duration, self.start_time, self.end_time)
-
     async def _job(self):
         await sleep(self.duration.total_seconds())
-        self.callback[0](*self.callback[1], **self.callback[2])
+        await self.callback[0](*self.callback[1], **self.callback[2])
 
     async def cancel(self):
-        self._task.cancel()
+        if self._task:
+            self._task.cancel()

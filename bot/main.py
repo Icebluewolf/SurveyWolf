@@ -2,7 +2,7 @@ import os
 import discord
 from utils.bot import SurveyWolf
 
-COGS = ["utility", "survey"]
+COGS = ["utility", "survey.creation", "survey.active", "survey.results"]
 
 intents = discord.Intents.default()
 
@@ -20,7 +20,7 @@ for cog in COGS:
     bot.load_extension(f"cogs.{cog}", store=False)
 
 
-@bot.event
+@bot.listen()
 async def on_ready():
     print("Logged In")
 
