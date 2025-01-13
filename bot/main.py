@@ -1,6 +1,9 @@
 import os
+from dotenv import load_dotenv
 import discord
 from utils.bot import SurveyWolf
+
+load_dotenv()
 
 COGS = ["utility", "survey.creation", "survey.active", "survey.results"]
 
