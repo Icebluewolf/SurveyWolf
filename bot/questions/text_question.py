@@ -68,9 +68,9 @@ class TextQuestion(SurveyQuestion):
         else:
             base_sql = """
             INSERT INTO surveys.questions (text, position, survey_id, required, description, type, question_data) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7);
+            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING ID;
             """
-            await conn.execute(
+            record = await conn.fetch(
                 base_sql,
                 self.title,
                 position,
@@ -80,6 +80,7 @@ class TextQuestion(SurveyQuestion):
                 QuestionType.TEXT.value,
                 await self._create_data(),
             )
+            self._id = record[0]["id"]
 
     async def delete(self) -> None:
         sql = """DELETE FROM surveys.questions WHERE id=$1;"""

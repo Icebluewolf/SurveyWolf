@@ -118,6 +118,7 @@ class SurveyTemplate:
 
             for n, question in enumerate(self.questions):
                 question.template = self._id
+                question.position = n
                 await question.save(n, conn)
 
         GUILD_TEMPLATE_CACHE.setdefault(self.guild_id, []).append(self)
