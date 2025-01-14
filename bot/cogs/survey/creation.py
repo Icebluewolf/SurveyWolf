@@ -190,10 +190,9 @@ class SetSettings(discord.ui.Modal):
             self.template.duration = None
         elif Timer.str_time(self.children[1].value).total_seconds() == 0:
             errors.append(
-                """
-            You Entered A Value For Time But It Was Not Valid. The Format For Time Is `0s0m0h0d0w`. 
-            You Can Put These In Any Order And Leave Out Any Unused Values.
-            """
+                """You Entered A Value For `Duration Override` But It Was Not Valid. 
+                You Should Write The Time In This Format: `2 hours and 15 minutes`.
+                Abbreviations Like `min` Or `m` For Minutes Are Also Allowed."""
             )
         else:
             self.template.duration = Timer.str_time(self.children[1].value)
