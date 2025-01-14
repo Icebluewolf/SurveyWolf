@@ -25,8 +25,9 @@ class ActiveSurveyCommands(Cog):
             if duration_override.total_seconds() == 0:
                 return await ctx.respond(
                     embed=await ef.fail(
-                        """You Entered A Value For `Duration Override` But It Was Not Valid. The Format For Time Is `0s0m0h0d0w`. 
-            You Can Put These In Any Order And Leave Out Any Unused Values."""
+                        """You Entered A Value For `Duration Override` But It Was Not Valid. 
+                        You Should Write The Time In This Format: `2 hours and 15 minutes`.
+                        Abbreviations Like `min` Or `m` For Minutes Are Also Allowed."""
                     )
                 )
 

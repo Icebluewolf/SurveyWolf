@@ -2,6 +2,7 @@ import asyncio
 import re
 from asyncio import sleep
 from datetime import datetime, timedelta
+from time_str import IntervalConverter
 from collections.abc import Callable
 
 
@@ -35,12 +36,8 @@ class Timer:
 
     @staticmethod
     def str_time(time: str) -> timedelta:
-        letters = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}
-        result = re.findall(r"(\d+?)([a-zA-Z])", time)
-        seconds = 0
-        for match in result:
-            seconds += int(match[0]) * letters[match[1]]
-        return timedelta(seconds=seconds)
+        converter = IntervalConverter(time, max_unit="days")
+        return converter.timedelta_relative()
 
     async def _job(self):
         await sleep(self.duration.total_seconds())
