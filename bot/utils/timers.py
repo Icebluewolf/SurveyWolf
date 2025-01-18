@@ -1,5 +1,4 @@
 import asyncio
-import re
 from asyncio import sleep
 from datetime import datetime, timedelta
 from time_str import IntervalConverter

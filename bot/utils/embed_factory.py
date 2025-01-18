@@ -1,5 +1,4 @@
 import discord
-from discord.ext.pages import Paginator
 
 
 async def _paginate(em: discord.Embed, value: str | list[tuple]) -> list[str]:
@@ -21,14 +20,14 @@ async def _paginate(em: discord.Embed, value: str | list[tuple]) -> list[str]:
 
     total_chars = len(em.title) + len(em.footer.text) + len(em.author.name)
 
-    if type(value) == str:
+    if type(value) is str:
         chunks = await get_chunks(value)
         for chunk in chunks:
             new_em = em.copy()
             new_em.description = chunk
             chunk = new_em
 
-    elif type(value) == list[tuple]:
+    elif type(value) is list[tuple]:
         for i in value:
             if len(i[0]) + len(i[1]) > 6000 - total_chars:
                 # use string chunk function
