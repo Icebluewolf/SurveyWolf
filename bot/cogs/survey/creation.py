@@ -4,6 +4,7 @@ import discord
 from discord import slash_command, Option
 
 from forms.survey.template import SurveyTemplate, title_autocomplete, get_templates
+from questions.multiple_choice import MultipleChoice
 from questions.survey_question import SurveyQuestion, QuestionType
 from questions.text_question import TextQuestion
 from utils import embed_factory as ef
@@ -315,7 +316,7 @@ class EditQuestions(discord.ui.View):
             emoji="📜",
         ),
         discord.SelectOption(
-            label="[Coming Soon] Multiple Choice",
+            label="Multiple Choice",
             description="The User Must Choose From A List Of Options",
             value=str(QuestionType.MULTIPLE_CHOICE.value),
             emoji="🇦",
@@ -333,10 +334,7 @@ class EditQuestions(discord.ui.View):
             case QuestionType.TEXT.value:
                 question = TextQuestion("New Question", self.wiz.template._id)
             case QuestionType.MULTIPLE_CHOICE.value:
-                return await interaction.respond(
-                    embed=await ef.fail("Multiple Choice Is Coming Soon!"),
-                    ephemeral=True,
-                )
+                question = MultipleChoice("New Question", self.wiz.template._id)
             case _:
                 raise ValueError(f"Invalid Question Type {select.values[0]}")
         await self.wiz.template.add_question(question, self.current_pos + 1)

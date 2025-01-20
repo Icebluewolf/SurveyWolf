@@ -62,7 +62,7 @@ class TextQuestion(SurveyQuestion):
                 self.template,
                 self.required,
                 self.description,
-                QuestionType.TEXT.value,
+                TextQuestion.QUESTION_TYPE.value,
                 await self._create_data(),
             )
         else:
@@ -77,7 +77,7 @@ class TextQuestion(SurveyQuestion):
                 self.template,
                 self.required,
                 self.description,
-                QuestionType.TEXT.value,
+                TextQuestion.QUESTION_TYPE.value,
                 await self._create_data(),
             )
             self._id = record[0]["id"]
