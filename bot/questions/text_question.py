@@ -119,8 +119,7 @@ class TextQuestion(SurveyQuestion):
         q.max_length = row["question_data"]["max_length"]
         return q
 
-    @staticmethod
-    async def view_response(response: dict) -> str:
+    async def view_response(self, response: dict) -> str:
         result = response["text"]
         return result
 

@@ -71,11 +71,8 @@ class MultipleChoice(SurveyQuestion):
     async def short_display(self) -> str:
         return f"{self.title} {self.description}"
 
-    @staticmethod
-    async def view_response(response: dict, options: list[MultipleChoiceOption] = None) -> str:
-        if options is None:
-            raise ValueError("options must be passed to multiple choice questions")
-        options = {x.id: x.text for x in options}
+    async def view_response(self, response: dict) -> str:
+        options = {x.id: x.text for x in self.options}
         result = ", ".join([options[x] for x in response["selected"]])
         return result
 

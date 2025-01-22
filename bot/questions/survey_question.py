@@ -101,9 +101,8 @@ class SurveyQuestion(ABC):
         q._id = row["id"]
         return q
 
-    @staticmethod
     @abstractmethod
-    async def view_response(response: dict) -> str:
+    async def view_response(self, response: dict) -> str:
         raise NotImplementedError
 
 
