@@ -101,17 +101,17 @@ class SurveyQuestion(ABC):
         q._id = row["id"]
         return q
 
-    @staticmethod
     @abstractmethod
-    async def view_response(response: dict) -> str:
+    async def view_response(self, response: dict) -> str:
         raise NotImplementedError
 
 
 class GetBaseInfo(discord.ui.Modal):
+    interaction: discord.Interaction
+
     def __init__(self, question: SurveyQuestion, title: str, *args, **kwargs):
         super().__init__(title=title, *args, **kwargs)
         self.question = question
-        self.interaction = None
 
         self.add_item(
             discord.ui.InputText(
@@ -157,5 +157,7 @@ class GetBaseInfo(discord.ui.Modal):
 async def from_db(row) -> SurveyQuestion:
     if row["type"] == QuestionType.TEXT.value:
         from questions.text_question import TextQuestion
-
         return await TextQuestion.fetch(row["id"])
+    elif row["type"] == QuestionType.MULTIPLE_CHOICE.value:
+        from questions.multiple_choice import MultipleChoice
+        return await MultipleChoice.fetch(row["id"])

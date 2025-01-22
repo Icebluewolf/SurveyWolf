@@ -115,13 +115,14 @@ class SurveyTemplate:
                     self.max_entries,
                     self.editable_responses,
                 )
+                # Only Add It To The Cache If It Is New, As It Should Already Be In The Cache Otherwise
+                GUILD_TEMPLATE_CACHE.setdefault(self.guild_id, []).append(self)
 
             for n, question in enumerate(self.questions):
                 question.template = self._id
                 question.position = n
                 await question.save(n, conn)
 
-        GUILD_TEMPLATE_CACHE.setdefault(self.guild_id, []).append(self)
 
     async def delete(self) -> None:
         sql = "DELETE FROM surveys.template WHERE guild_id=$1 AND id=$2;"
