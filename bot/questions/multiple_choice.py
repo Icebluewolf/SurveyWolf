@@ -12,6 +12,8 @@ class MultipleChoiceOption:
 
     def __init__(self, text: str):
         self.text: str = text
+        self.id = MultipleChoice.OPTION_ID_COUNTER
+        MultipleChoice.OPTION_ID_COUNTER += 1
 
     async def display(self) -> str:
         return self.text
@@ -32,6 +34,9 @@ class MultipleChoiceOption:
 class MultipleChoice(SurveyQuestion):
     QUESTION_TYPE = QuestionType.MULTIPLE_CHOICE
 
+    # This Only Needs To Be Unique Per Question
+    OPTION_ID_COUNTER: int = 0
+
     def __init__(self, title: str, survey_id: int):
         super().__init__(title, survey_id)
         self.description: str = ""
@@ -46,11 +51,11 @@ class MultipleChoice(SurveyQuestion):
 
     async def send_question(self, interaction: discord.Interaction) -> discord.Interaction:
         v = ResponseView(self)
-        await interaction.respond(view=v)
+        await interaction.respond(view=v, embed=await v.create_embed(), ephemeral=True)
         await v.wait()
         return v.interaction
 
-    async def display(self) -> discord.Embed:
+    async def display(self, with_options: bool = True) -> discord.Embed:
         e = discord.Embed(title=self.title, description=self.description)
         e.add_field(name="Required", value=str(self.required))
         if self.min_selects == self.max_selects:
@@ -59,7 +64,8 @@ class MultipleChoice(SurveyQuestion):
         else:
             e.add_field(name="Selections",
                         value=f"Must Select Between {self.min_selects} And {self.max_selects} Options Inclusive")
-        e.add_field(name="Options", value="- " + "\n- ".join([await x.display() for x in self.options]))
+        if with_options:
+            e.add_field(name="Options", value="- " + "\n- ".join([await x.display() for x in self.options]), inline=False)
         return e
 
     async def short_display(self) -> str:
@@ -128,7 +134,7 @@ class MultipleChoice(SurveyQuestion):
         return {
             "min_selects": self.min_selects,
             "max_selects": self.max_selects,
-            "options": [x.create_data() for x in self.options]
+            "options": [await x.create_data() for x in self.options]
         }
 
     async def set_up(self, interaction: discord.Interaction) -> discord.Interaction:
@@ -137,16 +143,16 @@ class MultipleChoice(SurveyQuestion):
         await m.wait()
         interaction = m.interaction
         v = AddChoices(self)
-        await interaction.response.send_message(embed=await general("Options"), view=v)
-        await v.wait()
-        return v.interaction
+        await interaction.response.edit_message(embed=await general("Options"), view=v)
+        if not await v.wait():
+            return v.interaction
 
     @classmethod
     async def load(cls, row: Record):
         q: cls = await super().load(row)
         q.min_selects = row["question_data"]["min_selects"]
         q.max_selects = row["question_data"]["max_selects"]
-        q.options = [MultipleChoiceOption.load(x) for x in row["question_data"]["options"]]
+        q.options = [await MultipleChoiceOption.load(x) for x in row["question_data"]["options"]]
         return q
 
 
@@ -196,6 +202,11 @@ class GetMultipleChoiceQuestionInfo(GetBaseInfo):
         except ValueError:
             errors.append("Maximum Options To Select Needs To Be A Number Between 1 And 20. Do Not Use `,` Or `.`")
 
+        # The Defaults Will Always Meet This Condition So Even If There Are Other Errors We Can Still Check
+        if self.question.min_selects > self.question.max_selects:
+            self.question.max_selects = self.question.max_selects
+            errors.append("Minimum Options Cannot Be Grater Then Maximum Options.")
+
         return errors
 
 
@@ -205,11 +216,20 @@ class AddChoices(discord.ui.View):
     class EditSelect(discord.ui.Select):
         def __init__(self, options: list[MultipleChoiceOption]):
             display_options = [discord.SelectOption(label=x.text, value=str(x.id)) for x in options]
+            disabled = False
             if len(display_options) == 0:
                 display_options.append(discord.SelectOption(label="No Options To Edit"))
+                disabled = True
             super().__init__(options=display_options,
-                             placeholder="Select A Option To Edit")
+                             placeholder="Select A Option To Edit", disabled=disabled)
             self.question_options: list[MultipleChoiceOption] = options
+
+        async def update(self, selected: list[MultipleChoiceOption]):
+            display_options = [discord.SelectOption(label=x.text, value=str(x.id)) for x in selected]
+            if len(display_options) == 0:
+                display_options.append(discord.SelectOption(label="No Options To Edit"))
+            self.options = display_options
+            self.question_options: list[MultipleChoiceOption] = selected
 
         async def callback(self, interaction: Interaction):
             found = None
@@ -220,45 +240,77 @@ class AddChoices(discord.ui.View):
             m = Options(prefill=found)
             await interaction.response.send_modal(m)
             await m.wait()
-            await m.interaction.response.edit_message(view=self.view, embed=await self.view._create_embed())
+            await self.view.update(m.interaction)
 
     class DeleteSelect(discord.ui.Select):
         def __init__(self, options: list[MultipleChoiceOption]):
             display_options = [discord.SelectOption(label=x.text, value=str(x.id)) for x in options]
+            disabled = False
             if len(display_options) == 0:
+                disabled = True
                 display_options.append(discord.SelectOption(label="No Options To Delete"))
             super().__init__(options=display_options,
-                             placeholder="Select A Option To Delete")
+                             placeholder="Select A Option To Delete", disabled=disabled)
             self.question_options: list[MultipleChoiceOption] = options
+
+        async def update(self, selected: list[MultipleChoiceOption]):
+            display_options = [discord.SelectOption(label=x.text, value=str(x.id)) for x in selected]
+            if len(display_options) == 0:
+                display_options.append(discord.SelectOption(label="No Options To Delete"))
+            self.options = display_options
+            self.question_options: list[MultipleChoiceOption] = selected
 
         async def callback(self, interaction: Interaction):
             for n, i in enumerate(self.question_options):
                 if int(self.values[0]) == i.id:
                     self.question_options.pop(n)
                     break
-            await interaction.response.edit_message(view=self.view, embed=await self.view._create_embed())
+            await self.view.update(interaction)
 
     def __init__(self, question: MultipleChoice):
         super().__init__(timeout=300)
         self.question: MultipleChoice = question
 
-        self.existing = self.question.options
+        self.edit_select = AddChoices.EditSelect(self.question.options)
+        self.delete_select = AddChoices.DeleteSelect(self.question.options)
 
-        self.add_item(AddChoices.EditSelect(self.question.options))
-        self.add_item(AddChoices.DeleteSelect(self.question.options))
+        self.add_item(self.edit_select)
+        self.add_item(self.delete_select)
 
     async def _create_embed(self) -> discord.Embed:
-        prefix = "- " if len(self.existing) > 0 else ""
-        return await general(title="Options", message=prefix + "\n- ".join([await x.display() for x in self.existing]))
+        prefix = "- " if len(self.question.options) > 0 else ""
+        return await general(title="Options", message=prefix + "\n- ".join([await x.display() for x in self.question.options]))
+
+    async def update(self, interaction: discord.Interaction):
+        if len(self.question.options) == 0:
+            self.edit_select.disabled = True
+            self.delete_select.disabled = True
+        else:
+            self.edit_select.disabled = False
+            self.delete_select.disabled = False
+        await self.edit_select.update(self.question.options)
+        await self.delete_select.update(self.question.options)
+
+        if len(self.question.options) < self.question.min_selects:
+            self.confirm.disabled = True
+        else:
+            self.confirm.disabled = False
+
+        if len(self.question.options) >= 20:
+            self.add_options.disabled = True
+        else:
+            self.add_options.disabled = False
+
+        await interaction.response.edit_message(view=self, embed=await self._create_embed())
 
     @discord.ui.button(label="Add Options", style=discord.ButtonStyle.blurple)
     async def add_options(self, button: discord.Button, interaction: discord.Interaction):
         m = Options(question=self.question)
         await interaction.response.send_modal(m)
         await m.wait()
-        await m.interaction.response.edit_message(view=self, embed=await self._create_embed())
+        await self.update(m.interaction)
 
-    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green, disabled=True)
     async def confirm(self, button: discord.Button, interaction: discord.Interaction):
         self.interaction = interaction
         self.stop()
@@ -316,48 +368,68 @@ class ResponseView(discord.ui.View):
                 self.view.selected.add(self.option)
             elif self.style == discord.ButtonStyle.blurple:
                 self.style = discord.ButtonStyle.gray
-                self.view.selected.pop(self.option)
+                self.view.selected.remove(self.option)
             await self.view.update(interaction)
 
-    def __init__(self, quesiton: MultipleChoice):
+    class ChoiceSelect(discord.ui.Select):
+        def __init__(self, question: MultipleChoice):
+            super().__init__(placeholder="Select Options", min_values=question.min_selects, max_values=question.max_selects)
+            self.option_map = {x.id: x for x in question.options}
+            for option in question.options:
+                self.add_option(label=option.text, value=str(option.id), default=option in question.selected)
+
+        async def callback(self, interaction: Interaction):
+            self.view.question.selected = [self.option_map[int(x)] for x in self.values]
+            self.view.interaction = interaction
+            self.view.stop()
+
+    def __init__(self, question: MultipleChoice):
         super().__init__()
         self.selected: set[MultipleChoiceOption] = set()
-        self.question = quesiton
-        for o in quesiton.options:
-            self.add_item(ResponseView.ChoiceButton(o))
+        self.question = question
+        self.add_item(ResponseView.ChoiceSelect(question))
+        if question.required:
+            self.remove_item(self.skip)
+        # for o in question.options:
+        #     self.add_item(ResponseView.ChoiceButton(o))
+        #
+        # if self.question.required:
+        #     self.submit.disabled = True
+        # else:
+        #     self.submit.disabled = False
 
-        if self.question.required:
-            self.submit.disabled = True
-        else:
-            self.submit.disabled = False
+    # async def update(self, interaction: discord.Interaction):
+    #     if len(self.selected) >= self.question.max_selects:
+    #         for button in self.children:
+    #             if isinstance(button, ResponseView.ChoiceButton) and button.style == discord.ButtonStyle.gray:
+    #                 button.disabled = True
+    #     else:
+    #         for button in self.children:
+    #             if isinstance(button, ResponseView.ChoiceButton):
+    #                 button.disabled = False
+    #
+    #     if len(self.selected) == 0:
+    #         if self.question.required:
+    #             self.submit.disabled = True
+    #         else:
+    #             self.submit.disabled = False
+    #     elif len(self.selected) < self.question.min_selects:
+    #         self.submit.disabled = True
+    #     else:
+    #         self.submit.disabled = False
+    #     await interaction.response.edit_message(view=self, embed=await self.create_embed())
 
-    async def update(self, interaction: discord.Interaction):
-        if len(self.selected) >= self.question.max_selects:
-            for button in self.children:
-                if isinstance(button, ResponseView.ChoiceButton) and button.style == discord.ButtonStyle.gray:
-                    button.disabled = True
-        else:
-            for button in self.children:
-                if isinstance(button, ResponseView.ChoiceButton):
-                    button.disabled = False
-
-        if len(self.selected) == 0:
-            if self.question.required:
-                self.submit.disabled = True
-            else:
-                self.submit.disabled = False
-        elif self.question.min_selects < len(self.selected):
-            self.submit.disabled = True
-        else:
-            self.submit.disabled = False
-        interaction.response.edit_message(view=self, embed=await self._create_embed())
-
-    async def _create_embed(self) -> discord.Embed:
-        e = await self.question.display()
-        e.set_footer(text="Options In Green Are Selected")
+    async def create_embed(self) -> discord.Embed:
+        e = await self.question.display(False)
         return e
 
-    @discord.ui.button(label="Save & Continue", style=discord.ButtonStyle.green, row=5)
-    async def submit(self, button: discord.Button, interaction: discord.Interaction):
+    # @discord.ui.button(label="Save & Continue", style=discord.ButtonStyle.green, row=4)
+    # async def submit(self, button: discord.Button, interaction: discord.Interaction):
+    #     self.question.selected = self.selected
+    #     self.interaction = interaction
+    #     self.stop()
+
+    @discord.ui.button(label="SKIP", style=discord.ButtonStyle.gray, row=2)
+    async def skip(self, button: discord.Button, interaction: discord.Interaction):
         self.interaction = interaction
         self.stop()
