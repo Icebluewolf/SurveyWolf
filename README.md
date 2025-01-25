@@ -17,7 +17,8 @@ To use Survey Wolf invite it to you Discord server with the link above.
 - To view the results use the `/results` command.
 
 Here Is A Video Showing Basic Usage
-![](assets/SurveyWolf%20Example%20Usage.mp4)
+
+https://github.com/user-attachments/assets/b21a622d-69df-4202-81cd-740f547ff6f9
 
 ### Getting Support
 Survey Wolf may have bugs or errors that occur. 
