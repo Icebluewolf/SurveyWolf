@@ -106,9 +106,7 @@ class TextQuestion(SurveyQuestion):
     #     WHERE questions.id=$1;"""
     #     return await TextQuestion.load(await db.fetch_one(sql, id))
 
-    async def save_response(
-        self, conn: Connection, encrypted_user_id: str, response_num: int, active_id: int, response_id: int
-    ):
+    async def save_response(self, conn: Connection, encrypted_user_id: str, active_id: int, response_id: int):
         sql = """INSERT INTO surveys.question_response (response, question, response_data) VALUES ($1, $2, $3);"""
         await conn.execute(sql, response_id, self._id, await self._create_response_data())
 

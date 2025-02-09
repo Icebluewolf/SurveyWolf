@@ -76,8 +76,7 @@ class MultipleChoice(SurveyQuestion):
         result = ", ".join([options[x] for x in response["selected"]])
         return result
 
-    async def save_response(self, conn: Connection, encrypted_user_id: str, response_num: int, active_id: int,
-                            response_id: int) -> None:
+    async def save_response(self, conn: Connection, encrypted_user_id: str, active_id: int, response_id: int) -> None:
         sql = """INSERT INTO surveys.question_response (response, question, response_data) VALUES ($1, $2, $3);"""
         await conn.execute(sql, response_id, self._id, await self._create_response_data())
 
