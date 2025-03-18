@@ -13,6 +13,7 @@ from utils.database import database as db
 class QuestionType(Enum):
     TEXT = 0
     MULTIPLE_CHOICE = 1
+    DATETIME = 2
 
 
 class SurveyQuestion(ABC):
@@ -212,3 +213,6 @@ async def from_db(row) -> SurveyQuestion:
     elif row["type"] == QuestionType.MULTIPLE_CHOICE.value:
         from questions.multiple_choice import MultipleChoice
         return await MultipleChoice.fetch(row["id"])
+    elif row["type"] == QuestionType.DATETIME.value:
+        from questions.datetime_question import DateQuestion
+        return await DateQuestion.fetch(row["id"])
