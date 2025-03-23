@@ -1,3 +1,4 @@
+from abc import ABC
 from enum import Enum
 from datetime import timedelta, datetime
 from asyncache import cached
@@ -6,8 +7,8 @@ from cachetools import LRUCache
 import discord
 from asyncpg import Record
 
+from questions.input_text_response import InputTextResponse
 from questions.survey_question import SurveyQuestion, from_db
-from questions.text_question import TextQuestion
 from utils.database import database as db
 from utils import embed_factory as ef
 
@@ -152,28 +153,33 @@ class SurveyTemplate:
     async def send_questions(
         self, interaction: discord.Interaction, encrypted_user_id: str, response_num: int, active_id: int
     ):
-        text_group: list[TextQuestion] = []
+        input_text_group: list[InputTextResponse] = []
+        # If the modal was the last thing sent, the next interaction will be from the modal submit.
+        # We cannot respond directly to a modal with another modal
         need_modal_transition: bool = False
         for question in sorted(self.questions, key=lambda x: x.position):
-            if isinstance(question, TextQuestion):
-                text_group.append(question)
-                if len(text_group) == 5:
+            if isinstance(question, InputTextResponse):
+                input_text_group.append(question)
+                # If the group is full send it
+                if len(input_text_group) == 5:
                     interaction = await do_modal_transition(interaction, need_modal_transition)
-                    interaction = await question.send_question(interaction, text_group)
-                    text_group = []
+                    interaction = await question.send_question(interaction, input_text_group)
+                    input_text_group = []
                     need_modal_transition = True
                 continue
 
-            if len(text_group) > 0:
+            # If the next question was not added to the group but there is pending questions in the group
+            if len(input_text_group) > 0:
                 interaction = await do_modal_transition(interaction, need_modal_transition)
-                interaction = await text_group[-1].send_question(interaction, text_group)
-                text_group = []
+                interaction = await input_text_group[-1].send_question(interaction, input_text_group)
+                input_text_group = []
             need_modal_transition = False
 
             interaction = await question.send_question(interaction)
-        if len(text_group) > 0:
+        # There are no more questions but still questions pending in the group
+        if len(input_text_group) > 0:
             interaction = await do_modal_transition(interaction, need_modal_transition)
-            interaction = await text_group[-1].send_question(interaction, text_group)
+            interaction = await input_text_group[-1].send_question(interaction, input_text_group)
 
         async with db.transaction() as conn:
             sql = """INSERT INTO surveys.responses (user_id, response_num, active_survey_id, template_id) 
@@ -192,8 +198,8 @@ class ModalTransition(discord.ui.View):
 
     @discord.ui.button(label="Continue With The Survey")
     async def callback(self, button, interaction: discord.Interaction):
-        self.stop()
         self.new_interaction = interaction
+        self.stop()
 
     async def send(self):
         e = await ef.general("To Continue Click The Button Below")
