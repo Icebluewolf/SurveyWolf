@@ -6,6 +6,7 @@ from cachetools import LRUCache
 
 import discord
 from asyncpg import Record
+from discord import InteractionType
 
 from questions.input_text_response import InputTextResponse
 from questions.survey_question import SurveyQuestion, from_db
@@ -202,7 +203,7 @@ class ModalTransition(discord.ui.View):
 
 
 async def do_modal_transition(interaction: discord.Interaction) -> discord.Interaction:
-    if not interaction.type.modal_submit:
+    if interaction.type != InteractionType.modal_submit:
         return interaction
 
     view = ModalTransition(interaction)
