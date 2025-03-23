@@ -1,15 +1,13 @@
-from typing import Self
-
 import discord
 from asyncpg import Record, Connection
-from discord import Interaction
 
-from questions.survey_question import SurveyQuestion, QuestionType, GetBaseInfo
+from questions.input_text_response import InputTextResponse
+from questions.survey_question import QuestionType, GetBaseInfo
 
 from utils.database import database as db
 
 
-class TextQuestion(SurveyQuestion):
+class TextQuestion(InputTextResponse):
     QUESTION_TYPE = QuestionType.TEXT
 
     def __init__(self, title: str, survey_id: int):
@@ -86,12 +84,6 @@ class TextQuestion(SurveyQuestion):
         sql = """DELETE FROM surveys.questions WHERE id=$1;"""
         await db.execute(sql, self._id)
 
-    async def send_question(self, interaction: discord.Interaction, group: list[Self] = None) -> discord.Interaction:
-        modal = GetResponse(group or [self])
-        await interaction.response.send_modal(modal)
-        await modal.wait()
-        return modal.interaction
-
     async def set_up(self, interaction: discord.Interaction) -> discord.Interaction:
         m = GetTextQuestionInfo(self)
         await interaction.response.send_modal(m)
@@ -122,6 +114,20 @@ class TextQuestion(SurveyQuestion):
     async def view_response(self, response: dict) -> str:
         result = response["text"]
         return result
+
+    def get_input_text(self) -> discord.ui.InputText:
+        return discord.ui.InputText(
+                    label=self.title[: min(len(self.title), 45)],
+                    min_length=self.min_length,
+                    max_length=self.max_length,
+                    required=self.required,
+                    style=discord.InputTextStyle.long,
+                )
+
+    async def handle_input_text_response(self, text: str) -> str | None:
+        self.value = text
+        # Text questions have no criteria other than the length which is handled by Discord
+        return None
 
 
 class GetTextQuestionInfo(GetBaseInfo):
@@ -171,25 +177,3 @@ class GetTextQuestionInfo(GetBaseInfo):
             errors.append("Maximum Length Needs To Be A Number Between 1 And 4000. Do Not Use `,` Or `.`")
 
         return errors
-
-
-class GetResponse(discord.ui.Modal):
-    def __init__(self, questions: list[TextQuestion]):
-        super().__init__(title="Type Your Answer Below")
-        for question in questions:
-            self.add_item(
-                discord.ui.InputText(
-                    label=question.title[: min(len(question.title), 45)],
-                    min_length=question.min_length,
-                    max_length=question.max_length,
-                    required=question.required,
-                )
-            )
-        self.questions = questions
-        self.interaction = None
-
-    async def callback(self, interaction: Interaction):
-        self.interaction = interaction
-        for n, question in enumerate(self.questions):
-            question.value = self.children[n].value
-        self.stop()

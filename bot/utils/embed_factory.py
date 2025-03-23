@@ -41,6 +41,10 @@ async def error(traceback: str, **kwargs) -> discord.Embed:
     return e
 
 
+async def input_error(message: str, errors: list[str]) -> discord.Embed:
+    return discord.Embed(color=0xD33033, title=message, description="- " + "\n- ".join(errors))
+
+
 async def fail(message: str, **kwargs) -> discord.Embed:
     return discord.Embed(color=0xD33033, title="You Can Not Do That", description=message)
 
