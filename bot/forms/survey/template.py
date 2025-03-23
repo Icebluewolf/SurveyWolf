@@ -7,6 +7,7 @@ import discord
 from asyncpg import Record
 from discord import InteractionType
 
+from questions.datetime_question import DateQuestion
 from questions.input_text_response import InputTextResponse
 from questions.survey_question import SurveyQuestion, from_db
 from utils.database import database as db
@@ -181,7 +182,7 @@ class SurveyTemplate:
                     VALUES ($1, $2, $3, $4) RETURNING id;"""
             response_id = await conn.fetchval(sql, encrypted_user_id, response_num, active_id, self._id)
             for question in self.questions:
-                await question.save_response(conn, encrypted_user_id, response_num, active_id, response_id)
+                await question.save_response(conn, encrypted_user_id, active_id, response_id)
         await interaction.respond(embed=await ef.success("You Have Completed The Survey!"), ephemeral=True)
 
 
