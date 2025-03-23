@@ -154,31 +154,26 @@ class SurveyTemplate:
         self, interaction: discord.Interaction, encrypted_user_id: str, response_num: int, active_id: int
     ):
         input_text_group: list[InputTextResponse] = []
-        # If the modal was the last thing sent, the next interaction will be from the modal submit.
-        # We cannot respond directly to a modal with another modal
-        need_modal_transition: bool = False
         for question in sorted(self.questions, key=lambda x: x.position):
             if isinstance(question, InputTextResponse):
                 input_text_group.append(question)
                 # If the group is full send it
                 if len(input_text_group) == 5:
-                    interaction = await do_modal_transition(interaction, need_modal_transition)
+                    interaction = await do_modal_transition(interaction)
                     interaction = await question.send_question(interaction, input_text_group)
                     input_text_group = []
-                    need_modal_transition = True
                 continue
 
             # If the next question was not added to the group but there is pending questions in the group
             if len(input_text_group) > 0:
-                interaction = await do_modal_transition(interaction, need_modal_transition)
+                interaction = await do_modal_transition(interaction)
                 interaction = await input_text_group[-1].send_question(interaction, input_text_group)
                 input_text_group = []
-            need_modal_transition = False
 
             interaction = await question.send_question(interaction)
         # There are no more questions but still questions pending in the group
         if len(input_text_group) > 0:
-            interaction = await do_modal_transition(interaction, need_modal_transition)
+            interaction = await do_modal_transition(interaction)
             interaction = await input_text_group[-1].send_question(interaction, input_text_group)
 
         async with db.transaction() as conn:
@@ -206,8 +201,8 @@ class ModalTransition(discord.ui.View):
         await self.old_interaction.respond(ephemeral=True, view=self, embed=e)
 
 
-async def do_modal_transition(interaction: discord.Interaction, needs: bool) -> discord.Interaction:
-    if not needs:
+async def do_modal_transition(interaction: discord.Interaction) -> discord.Interaction:
+    if not interaction.type.modal_submit:
         return interaction
 
     view = ModalTransition(interaction)
