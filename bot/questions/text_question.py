@@ -178,25 +178,3 @@ class GetTextQuestionInfo(GetBaseInfo):
             errors.append("Maximum Length Needs To Be A Number Between 1 And 4000. Do Not Use `,` Or `.`")
 
         return errors
-
-
-class GetResponse(discord.ui.Modal):
-    def __init__(self, questions: list[TextQuestion]):
-        super().__init__(title="Type Your Answer Below")
-        for question in questions:
-            self.add_item(
-                discord.ui.InputText(
-                    label=question.title[: min(len(question.title), 45)],
-                    min_length=question.min_length,
-                    max_length=question.max_length,
-                    required=question.required,
-                )
-            )
-        self.questions = questions
-        self.interaction = None
-
-    async def callback(self, interaction: Interaction):
-        self.interaction = interaction
-        for n, question in enumerate(self.questions):
-            question.value = self.children[n].value
-        self.stop()
