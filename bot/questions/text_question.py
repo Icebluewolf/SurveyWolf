@@ -1,6 +1,5 @@
 import discord
 from asyncpg import Record, Connection
-from discord import Interaction
 
 from questions.input_text_response import InputTextResponse
 from questions.survey_question import QuestionType, GetBaseInfo
