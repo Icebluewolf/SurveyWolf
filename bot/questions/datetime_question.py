@@ -1,13 +1,15 @@
 import datetime
+import warnings
 from enum import Enum
 from typing import TYPE_CHECKING, Self
 
 import discord
-from asyncpg import Connection
+from asyncpg import Connection, Record
 from discord import Interaction
-from dateutil.parser import parse as datetime_parser, ParserError
+from dateutil.parser import parse as datetime_parser, ParserError, UnknownTimezoneWarning
 
-from questions.survey_question import SurveyQuestion, QuestionType, GetBaseInfo
+from questions.input_text_response import InputTextResponse, GetResponse
+from questions.survey_question import QuestionType, GetBaseInfo
 from utils.embed_factory import general
 from utils.database import database as db
 from utils.timers import Timer
@@ -32,7 +34,7 @@ class DateQuestionType(Enum):
             raise TypeError("value must be of type DateQuestionType")
 
 
-class DateQuestion(SurveyQuestion):
+class DateQuestion(InputTextResponse):
     QUESTION_TYPE = QuestionType.DATETIME
 
     def __init__(self, title: str, survey_id: int):
@@ -107,7 +109,7 @@ class DateQuestion(SurveyQuestion):
         if self.type == DateQuestionType.DATETIME:
             obj = datetime.datetime.fromtimestamp(float(timestamp))
         elif self.type == DateQuestionType.DATE:
-            obj = datetime.date.fromtimestamp(float(timestamp))
+            obj = datetime.date.fromisoformat(timestamp)
         elif self.type == DateQuestionType.TIME:
             obj = datetime.time.fromisoformat(timestamp)
         elif self.type == DateQuestionType.DURATION:
@@ -167,6 +169,14 @@ class DateQuestion(SurveyQuestion):
             )
             self._id = record[0]["id"]
 
+    @classmethod
+    async def load(cls, row: Record):
+        q = await super().load(row)
+        q.type = DateQuestionType(row["question_data"]["type"])
+        q.minimum = await cls._from_storable_format(q, row["question_data"]["minimum"])
+        q.maximum = await cls._from_storable_format(q, row["question_data"]["maximum"])
+        return q
+
     async def delete(self) -> None:
         sql = """DELETE FROM surveys.questions WHERE id=$1;"""
         await db.execute(sql, self._id)
@@ -176,7 +186,59 @@ class DateQuestion(SurveyQuestion):
         await conn.execute(sql, response_id, self._id, await self._create_response_data())
 
     async def view_response(self, response: dict) -> str:
-        return await self._get_discord_format(self.value)
+        return await self._get_discord_format(await self._from_storable_format(response["timestamp"]))
+
+    def get_input_text(self) -> discord.ui.InputText:
+        return discord.ui.InputText(
+            label=self.title[: min(len(self.title), 45)],
+            required=self.required,
+        )
+
+    async def handle_input_text_response(self, text: str) -> str | None:
+        if text is None:
+            self.value = None
+            return None
+        converted = None
+        try:
+            with warnings.catch_warnings(category=UnknownTimezoneWarning, action="error"):
+                if self.type == DateQuestionType.DATE:
+                    converted = datetime_parser(text, dayfirst=True, yearfirst=False).date()
+                elif self.type == DateQuestionType.TIME:
+                    t = datetime_parser(text,
+                                        dayfirst=True,
+                                        yearfirst=False,
+                                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+                                        ).timetz()
+                    converted = t
+                elif self.type == DateQuestionType.DATETIME:
+                    t = datetime_parser(text,
+                                        dayfirst=True,
+                                        yearfirst=False,
+                                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+                                        )
+                    converted = t
+                elif self.type == DateQuestionType.DURATION:
+                    delta = Timer.str_time(text)
+                    if delta.total_seconds() == 0:
+                        raise ParserError("Duration Did Not Find Any Valid Units")
+                    converted = delta
+        except ParserError as e:
+            return f"Could Not Convert Question {self.position + 1} To A {self.type.human_readable()}: {str(e)}"
+        except UnknownTimezoneWarning:
+            return f"A Timezone Was Provided But Not Understood For Question {self.position + 1}"
+        except OverflowError:
+            return f"The Value `{text}` Is Too Large To Be Interpreted For Question {self.position + 1}"
+
+        if (self.minimum and converted < self.minimum) or (self.maximum and converted > self.maximum):
+            if self.minimum and self.maximum:
+                return f"The Value `{text}` Must Be In The Range {await self._get_discord_format(self.minimum)} to {await self._get_discord_format(self.maximum)}"
+
+            limit_type = "Larger" if self.minimum else "Smaller"
+            limit_value = await self._get_discord_format(self.minimum or self.maximum)
+            return f"The Value `{text}` Must Be {limit_type} Than {limit_value}"
+
+        # If it got past all the checks assign it to the value
+        self.value = converted
 
 
 class Settings(discord.ui.View):
@@ -308,57 +370,3 @@ class MinMaxModal(discord.ui.Modal):
             )
             em.add_field(name="Errors", value="\n".join(errors))
             await interaction.followup.send(embed=em)
-
-
-class GetResponse(discord.ui.Modal):
-    def __init__(self, questions: list[DateQuestion]):
-        super().__init__(title="Type Your Answer Below")
-        for question in questions:
-            self.add_item(
-                discord.ui.InputText(
-                    label=question.title[: min(len(question.title), 45)],
-                    required=question.required,
-                )
-            )
-        self.questions = questions
-        self.interaction = None
-
-    async def callback(self, interaction: Interaction):
-        self.interaction = interaction
-
-        redo = []
-        errors = []
-        for n, child in enumerate(self.children):
-            if child.value is None:
-                self.questions[n].value = None
-                continue
-            try:
-                if self.questions[n].type == DateQuestionType.DATE:
-                    self.questions[n].value = datetime_parser(child.value, dayfirst=True, yearfirst=False).date()
-                elif self.questions[n].type == DateQuestionType.TIME:
-                    t = datetime_parser(child.value,
-                                        dayfirst=True,
-                                        yearfirst=False,
-                                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
-                                        ).timetz()
-                    self.questions[n].value = t
-                elif self.questions[n].type == DateQuestionType.DATETIME:
-                    t = datetime_parser(child.value,
-                                        dayfirst=True,
-                                        yearfirst=False,
-                                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
-                                        )
-                    self.questions[n].value = t
-                elif self.questions[n].type == DateQuestionType.DURATION:
-                    delta = Timer.str_time(child.value)
-                    if delta.total_seconds() == 0:
-                        raise ParserError("Duration Did Not Find Any Valid Units")
-                    self.questions[n].value = delta
-            except ParserError as e:
-                redo.append(self.questions[n])
-                errors.append(f"Could Not Convert `{child.value}` To A {self.questions[n].type.human_readable()} Format For Question {n+1}")
-            except OverflowError:
-                redo.append(self.questions[n])
-                errors.append(f"The Value `{child.value}` Is Too Large For Question {n+1}")
-
-        self.stop()

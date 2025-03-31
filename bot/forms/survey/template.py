@@ -7,7 +7,6 @@ import discord
 from asyncpg import Record
 from discord import InteractionType
 
-from questions.datetime_question import DateQuestion
 from questions.input_text_response import InputTextResponse
 from questions.survey_question import SurveyQuestion, from_db
 from utils.database import database as db

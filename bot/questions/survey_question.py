@@ -136,6 +136,7 @@ class SurveyQuestion(ABC):
         raise NotImplementedError
 
     @classmethod
+    @abstractmethod
     async def load(cls, row: Record):
         """
         Create An Instance Of A SurveyQuestion From A Database Row
