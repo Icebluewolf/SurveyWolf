@@ -103,6 +103,19 @@ class DateQuestion(InputTextResponse):
             raise TypeError("value must be of type DateQuestionType")
         return str(timestamp)
 
+    def prompt_user_format(self) -> str:
+        if self.type == DateQuestionType.DATE:
+            placeholder = "Enter In The Format Day/Month/Year"
+        elif self.type == DateQuestionType.TIME:
+            placeholder = "Enter In The Format 24Hour:Minute:Second Timezone With UTC Being The Default"
+        elif self.type == DateQuestionType.DATETIME:
+            placeholder = "Enter In The Format Day/Month/Year 24Hour:Minute:Second Timezone With UTC Being The Default"
+        elif self.type == DateQuestionType.DURATION:
+            placeholder = "Enter In The Format 2 hours and 15 minutes. Abbreviations Like min Or m For Are Also Allowed"
+        else:
+            placeholder = ""
+        return placeholder
+
     async def _from_storable_format(self, timestamp: str) -> datetime.datetime | datetime.time | datetime.timedelta | datetime.date | None:
         if timestamp == "":
             return None
@@ -192,6 +205,8 @@ class DateQuestion(InputTextResponse):
         return discord.ui.InputText(
             label=self.title[: min(len(self.title), 45)],
             required=self.required,
+            style=discord.InputTextStyle.long,
+            placeholder=self.prompt_user_format(),
         )
 
     async def handle_input_text_response(self, text: str) -> str | None:
@@ -248,6 +263,8 @@ class Settings(discord.ui.View):
         super().__init__()
         self.question = question
         self.selected: discord.ui.Button | None = None
+        self.pending_min: str = ""
+        self.pending_max: str = ""
         for i in DateQuestionType:
             b = TypeButton(i.human_readable(), i)
             if self.question.type == i:
@@ -266,7 +283,7 @@ class Settings(discord.ui.View):
 
     @discord.ui.button(label="Set Min/Max", disabled=True, style=discord.ButtonStyle.gray, row=2)
     async def set_min_max(self, button, interaction: discord.Interaction):
-        await interaction.response.send_modal(MinMaxModal(self.question, self))
+        await interaction.response.send_modal(MinMaxModal(self.question, self, self.pending_min, self.pending_max))
 
     @discord.ui.button(label="Finish", disabled=True, style=discord.ButtonStyle.gray, row=2)
     async def finish(self, button, interaction: discord.Interaction):
@@ -295,30 +312,31 @@ class TypeButton(discord.ui.Button):
         # Ensure That The Min/Max Get Reset When A Different Type Is Selected So There Is Not A Mismatch In Types
         self.view.question.minimum = None
         self.view.question.maximum = None
+        self.view.pending_min = ""
+        self.view.pending_max = ""
         await self.view.update(interaction)
 
 
 class MinMaxModal(discord.ui.Modal):
-    def __init__(self, question: DateQuestion, view: Settings):
+    def __init__(self, question: DateQuestion, view: Settings, minimum: str, maximum: str):
         super().__init__(title="Enter Minimum And Maximum Values")
         self.q = question
         self.view = view
-        if question.type == DateQuestionType.DATE:
-            placeholder = "Enter In The Format `Day/Month/Year`"
-        elif question.type == DateQuestionType.TIME:
-            placeholder = "Enter In The Format `24Hour:Minute:Second Timezone` With UTC Being The Default"
-        elif question.type == DateQuestionType.DATETIME:
-            placeholder = "Enter In The Format `Day/Month/Year 24Hour:Minute:Second Timezone` UTC Being The Default"
-        elif question.type == DateQuestionType.DURATION:
-            placeholder = "Enter In The Format: `2 hours and 15 minutes`. `min` Or `m` For Minutes Are Also Allowed."
 
-        self.add_item(discord.ui.InputText(label="Minimum", placeholder=placeholder, required=False))
-        self.add_item(discord.ui.InputText(label="Maximum", placeholder=placeholder, required=False))
+        placeholder = self.q.prompt_user_format()
+
+        self.add_item(discord.ui.InputText(label="Minimum", placeholder=placeholder, required=False, style=discord.InputTextStyle.long, value=minimum))
+        self.add_item(discord.ui.InputText(label="Maximum", placeholder=placeholder, required=False, style=discord.InputTextStyle.long, value=maximum))
 
     async def callback(self, interaction: Interaction):
         formated = []
         errors = []
         for child in self.children:
+            if child.label == "Minimum":
+                self.view.pending_min = child.value
+            elif child.label == "Maximum":
+                self.view.pending_max = child.value
+
             if child.value.strip() == "":
                 formated.append(None)
                 continue
