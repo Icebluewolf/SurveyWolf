@@ -77,6 +77,8 @@ class MultipleChoice(SurveyQuestion):
         return result
 
     async def save_response(self, conn: Connection, encrypted_user_id: str, active_id: int, response_id: int) -> None:
+        if not self.selected:
+            return
         sql = """INSERT INTO surveys.question_response (response, question, response_data) VALUES ($1, $2, $3);"""
         await conn.execute(sql, response_id, self._id, await self._create_response_data())
 
@@ -375,55 +377,20 @@ class ResponseView(discord.ui.View):
                 self.add_option(label=option.text, value=str(option.id), default=option in question.selected)
 
         async def callback(self, interaction: Interaction):
-            self.view.question.selected = [self.option_map[int(x)] for x in self.values]
+            self.view.question.selected = {self.option_map[int(x)] for x in self.values}
             self.view.interaction = interaction
             self.view.stop()
 
     def __init__(self, question: MultipleChoice):
         super().__init__()
-        self.selected: set[MultipleChoiceOption] = set()
         self.question = question
         self.add_item(ResponseView.ChoiceSelect(question))
         if question.required:
             self.remove_item(self.skip)
-        # for o in question.options:
-        #     self.add_item(ResponseView.ChoiceButton(o))
-        #
-        # if self.question.required:
-        #     self.submit.disabled = True
-        # else:
-        #     self.submit.disabled = False
-
-    # async def update(self, interaction: discord.Interaction):
-    #     if len(self.selected) >= self.question.max_selects:
-    #         for button in self.children:
-    #             if isinstance(button, ResponseView.ChoiceButton) and button.style == discord.ButtonStyle.gray:
-    #                 button.disabled = True
-    #     else:
-    #         for button in self.children:
-    #             if isinstance(button, ResponseView.ChoiceButton):
-    #                 button.disabled = False
-    #
-    #     if len(self.selected) == 0:
-    #         if self.question.required:
-    #             self.submit.disabled = True
-    #         else:
-    #             self.submit.disabled = False
-    #     elif len(self.selected) < self.question.min_selects:
-    #         self.submit.disabled = True
-    #     else:
-    #         self.submit.disabled = False
-    #     await interaction.response.edit_message(view=self, embed=await self.create_embed())
 
     async def create_embed(self) -> discord.Embed:
         e = await self.question.display(False)
         return e
-
-    # @discord.ui.button(label="Save & Continue", style=discord.ButtonStyle.green, row=4)
-    # async def submit(self, button: discord.Button, interaction: discord.Interaction):
-    #     self.question.selected = self.selected
-    #     self.interaction = interaction
-    #     self.stop()
 
     @discord.ui.button(label="SKIP", style=discord.ButtonStyle.gray, row=2)
     async def skip(self, button: discord.Button, interaction: discord.Interaction):

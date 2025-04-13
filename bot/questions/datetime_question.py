@@ -387,4 +387,4 @@ class MinMaxModal(discord.ui.Modal):
                 color=0xD33033,
             )
             em.add_field(name="Errors", value="\n".join(errors))
-            await interaction.followup.send(embed=em)
+            await interaction.followup.send(embed=em, ephemeral=True)
