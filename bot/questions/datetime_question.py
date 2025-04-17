@@ -120,7 +120,7 @@ class DateQuestion(InputTextResponse):
         if timestamp == "":
             return None
         if self.type == DateQuestionType.DATETIME:
-            obj = datetime.datetime.fromtimestamp(float(timestamp))
+            obj = datetime.datetime.fromtimestamp(float(timestamp), tz=datetime.timezone.utc)
         elif self.type == DateQuestionType.DATE:
             obj = datetime.date.fromisoformat(timestamp)
         elif self.type == DateQuestionType.TIME:
@@ -210,7 +210,7 @@ class DateQuestion(InputTextResponse):
         )
 
     async def handle_input_text_response(self, text: str) -> str | None:
-        if text is None:
+        if text is None or (not self.required and text == ""):
             self.value = None
             return None
         converted = None
