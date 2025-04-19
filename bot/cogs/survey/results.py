@@ -79,6 +79,16 @@ class ResultsCog(discord.Cog):
                     e.description += response + "\n"
                 if len(e.description) != 0:
                     embeds.append(pages.Page(embeds=[question_embed, e]))
+                if len(embeds) == 0:
+                    embeds.append(
+                        [
+                            question_embed,
+                            await ef.general(
+                                "There Are No Responses To This Question",
+                                message="This Question Was Optional And No One Answered It!"
+                            )
+                        ]
+                    )
                 page_groups.append(
                     pages.PageGroup(label=question.title, description=question.description, pages=embeds)
                 )
@@ -124,6 +134,9 @@ class ResultsCog(discord.Cog):
                     e.description += response_text + "\n"
                 if len(e.description) != 0:
                     embeds.append(pages.Page(embeds=[response_embed, e]))
+                if len(embeds) == 0:
+                    # If the survey only has option questions and all questions were skipped
+                    continue
                 page_groups.append(pages.PageGroup(label=f"Response {n + 1}", pages=embeds))
 
             pgn = pages.Paginator(pages=page_groups, show_menu=True, timeout=840)
