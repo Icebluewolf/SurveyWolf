@@ -69,13 +69,26 @@ class ResultsCog(discord.Cog):
                 e = discord.Embed(title="Responses", description="")
                 embeds = []
                 for response in response_map[question._id]:
-                    response = "- " + discord.utils.escape_markdown(await question.view_response(response))
+                    r = await question.view_response(response)
+                    if len(r) == 0:
+                        continue
+                    response = "- " + discord.utils.escape_markdown(r)
                     if len(e.description) != 0 and len(e) + len(response) > 1024:
                         embeds.append(pages.Page(embeds=[question_embed, e]))
                         e = discord.Embed(title="Responses", description="")
                     e.description += response + "\n"
                 if len(e.description) != 0:
                     embeds.append(pages.Page(embeds=[question_embed, e]))
+                if len(embeds) == 0:
+                    embeds.append(
+                        [
+                            question_embed,
+                            await ef.general(
+                                "There Are No Responses To This Question",
+                                message="This Question Was Optional And No One Answered It!",
+                            ),
+                        ]
+                    )
                 page_groups.append(
                     pages.PageGroup(label=question.title, description=question.description, pages=embeds)
                 )
@@ -110,14 +123,20 @@ class ResultsCog(discord.Cog):
                 embeds = []
                 for response in sorted(response_map[group], key=lambda x: question_map[x[0]].position):
                     question = question_map[response[0]]
+                    r = await question.view_response(response[1])
+                    if len(r) == 0:
+                        continue
                     response_text = f"**Question {question.position + 1}:** {await question.short_display()}"
-                    response_text += "\n- " + discord.utils.escape_markdown(await question.view_response(response[1]))
+                    response_text += "\n- " + discord.utils.escape_markdown(r)
                     if len(e.description) != 0 and len(e) + len(response_text) > 1024:
                         embeds.append(pages.Page(embeds=[response_embed, e]))
                         e = discord.Embed(title="Responses", description="")
                     e.description += response_text + "\n"
                 if len(e.description) != 0:
                     embeds.append(pages.Page(embeds=[response_embed, e]))
+                if len(embeds) == 0:
+                    # If the survey only has option questions and all questions were skipped
+                    continue
                 page_groups.append(pages.PageGroup(label=f"Response {n + 1}", pages=embeds))
 
             pgn = pages.Paginator(pages=page_groups, show_menu=True, timeout=840)

@@ -98,9 +98,7 @@ class TextQuestion(InputTextResponse):
     #     WHERE questions.id=$1;"""
     #     return await TextQuestion.load(await db.fetch_one(sql, id))
 
-    async def save_response(
-        self, conn: Connection, encrypted_user_id: str, response_num: int, active_id: int, response_id: int
-    ):
+    async def save_response(self, conn: Connection, encrypted_user_id: str, active_id: int, response_id: int):
         sql = """INSERT INTO surveys.question_response (response, question, response_data) VALUES ($1, $2, $3);"""
         await conn.execute(sql, response_id, self._id, await self._create_response_data())
 
@@ -117,12 +115,12 @@ class TextQuestion(InputTextResponse):
 
     def get_input_text(self) -> discord.ui.InputText:
         return discord.ui.InputText(
-                    label=self.title[: min(len(self.title), 45)],
-                    min_length=self.min_length,
-                    max_length=self.max_length,
-                    required=self.required,
-                    style=discord.InputTextStyle.long,
-                )
+            label=self.title[: min(len(self.title), 45)],
+            min_length=self.min_length,
+            max_length=self.max_length,
+            required=self.required,
+            style=discord.InputTextStyle.long,
+        )
 
     async def handle_input_text_response(self, text: str) -> str | None:
         self.value = text

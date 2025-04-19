@@ -124,7 +124,6 @@ class SurveyTemplate:
                 question.position = n
                 await question.save(n, conn)
 
-
     async def delete(self) -> None:
         sql = "DELETE FROM surveys.template WHERE guild_id=$1 AND id=$2;"
         await db.execute(sql, self.guild_id, self._id)
@@ -181,7 +180,7 @@ class SurveyTemplate:
                     VALUES ($1, $2, $3, $4) RETURNING id;"""
             response_id = await conn.fetchval(sql, encrypted_user_id, response_num, active_id, self._id)
             for question in self.questions:
-                await question.save_response(conn, encrypted_user_id, response_num, active_id, response_id)
+                await question.save_response(conn, encrypted_user_id, active_id, response_id)
         await interaction.respond(embed=await ef.success("You Have Completed The Survey!"), ephemeral=True)
 
 

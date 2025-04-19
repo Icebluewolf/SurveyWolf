@@ -4,6 +4,7 @@ import discord
 from discord import slash_command, Option
 
 from forms.survey.template import SurveyTemplate, title_autocomplete, get_templates
+from questions.datetime_question import DateQuestion
 from questions.multiple_choice import MultipleChoice
 from questions.survey_question import SurveyQuestion, QuestionType
 from questions.text_question import TextQuestion
@@ -321,6 +322,12 @@ class EditQuestions(discord.ui.View):
             value=str(QuestionType.MULTIPLE_CHOICE.value),
             emoji="🇦",
         ),
+        discord.SelectOption(
+            label="DateTime Or Duration",
+            description="The User Must Enter A Date, Time, Date And Time, Or Duration",
+            value=str(QuestionType.DATETIME.value),
+            emoji="📅",
+        ),
     ]
 
     @discord.ui.select(placeholder="Add New Question", options=options, row=4)
@@ -335,6 +342,8 @@ class EditQuestions(discord.ui.View):
                 question = TextQuestion("New Question", self.wiz.template._id)
             case QuestionType.MULTIPLE_CHOICE.value:
                 question = MultipleChoice("New Question", self.wiz.template._id)
+            case QuestionType.DATETIME.value:
+                question = DateQuestion("New Question", self.wiz.template._id)
             case _:
                 raise ValueError(f"Invalid Question Type {select.values[0]}")
         await self.wiz.template.add_question(question, self.current_pos + 1)

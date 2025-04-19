@@ -13,6 +13,7 @@ from utils.database import database as db
 class QuestionType(Enum):
     TEXT = 0
     MULTIPLE_CHOICE = 1
+    DATETIME = 2
 
 
 class SurveyQuestion(ABC):
@@ -46,6 +47,11 @@ class SurveyQuestion(ABC):
 
     @classmethod
     async def fetch(cls, id: int):
+        """
+        Gets The Question From The Database By ID
+        :param id: The ID of the question
+        :return: An instance of the class it is called on
+        """
         sql = """
                 SELECT text, questions.id, position, survey_id, required, description, type, question_data 
                 FROM surveys.questions
@@ -54,46 +60,88 @@ class SurveyQuestion(ABC):
 
     @abstractmethod
     async def set_up(self, interaction: discord.Interaction) -> discord.Interaction:
+        """
+        Gathers User Input For The Settings Of The Question
+        :param interaction: The interaction that is pending a response from the prior action
+        :return: An interaction with no response to be used by the next action
+        """
         raise NotImplementedError
 
     @abstractmethod
     async def send_question(self, interaction: discord.Interaction) -> discord.Interaction:
+        """
+        Sends The Question To A User Taking The Survey And Gathers The Response
+        :param interaction: The interaction that is pending a response from the prior action
+        :return: An interaction with no response to be used by the next action
+        """
         raise NotImplementedError
 
     @abstractmethod
     async def display(self) -> discord.Embed:
+        """
+        An Embed That Displays All The Details Of The Question
+        :return: The created Embed
+        """
         raise NotImplementedError
 
     @abstractmethod
     async def short_display(self) -> str:
+        """
+        A Single Line String Containing The Most Important Information About The Question
+        :return: A single line string
+        """
         raise NotImplementedError
 
     @abstractmethod
     async def _create_data(self) -> dict:
-        """Return A Dict That Is Converted To String By asyncpg"""
+        """
+        Creates The JSONB Data For The Question To Be Inserted Into The Questions Table Of The Database
+        :return: A dict that is converted to string by asyncpg
+        """
         raise NotImplementedError
 
     @abstractmethod
     async def _create_response_data(self) -> dict:
-        """Return A Dict That Is Converted To String By asyncpg"""
+        """
+        Creates The JSONB Data For The Response To The Question To Be Inserted Into The Responses Table Of The Database
+        :return: A dict that is converted to string by asyncpg
+        """
         raise NotImplementedError
 
     @abstractmethod
     async def save(self, position: int, conn: Connection = None) -> None:
+        """
+        Save The Question To The Database
+        :param position: The position of the question in the ordered list of questions
+        :param conn: The database connection to use. Useful for batching requests
+        """
         raise NotImplementedError
 
     @abstractmethod
     async def delete(self) -> None:
+        """
+        Deletes The Question From The Database
+        """
         raise NotImplementedError
 
     @abstractmethod
-    async def save_response(
-        self, conn: Connection, encrypted_user_id: str, response_num: int, active_id: int, response_id: int
-    ) -> None:
+    async def save_response(self, conn: Connection, encrypted_user_id: str, active_id: int, response_id: int) -> None:
+        """
+        Saves The Users Response To This Question To The Database
+        :param conn: The Database connection to use. Useful for batching requests
+        :param encrypted_user_id: The user ID of the user that submitted the answer
+        :param active_id: The ID of the survey
+        :param response_id: The ID of the main response row
+        """
         raise NotImplementedError
 
     @classmethod
+    @abstractmethod
     async def load(cls, row: Record):
+        """
+        Create An Instance Of A SurveyQuestion From A Database Row
+        :param row: The row retrieved from the database
+        """
         q = cls(row["text"], row["survey_id"])
         q.position = row["position"]
         q.required = row["required"]
@@ -103,6 +151,11 @@ class SurveyQuestion(ABC):
 
     @abstractmethod
     async def view_response(self, response: dict) -> str:
+        """
+        A Short String Representation Of The Response To The Question
+        :param response: The JSONB response data column from the question response row
+        :return: A string representation of the questions response
+        """
         raise NotImplementedError
 
 
@@ -157,7 +210,13 @@ class GetBaseInfo(discord.ui.Modal):
 async def from_db(row) -> SurveyQuestion:
     if row["type"] == QuestionType.TEXT.value:
         from questions.text_question import TextQuestion
+
         return await TextQuestion.fetch(row["id"])
     elif row["type"] == QuestionType.MULTIPLE_CHOICE.value:
         from questions.multiple_choice import MultipleChoice
+
         return await MultipleChoice.fetch(row["id"])
+    elif row["type"] == QuestionType.DATETIME.value:
+        from questions.datetime_question import DateQuestion
+
+        return await DateQuestion.fetch(row["id"])
