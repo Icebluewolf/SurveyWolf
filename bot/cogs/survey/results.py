@@ -85,8 +85,8 @@ class ResultsCog(discord.Cog):
                             question_embed,
                             await ef.general(
                                 "There Are No Responses To This Question",
-                                message="This Question Was Optional And No One Answered It!"
-                            )
+                                message="This Question Was Optional And No One Answered It!",
+                            ),
                         ]
                     )
                 page_groups.append(

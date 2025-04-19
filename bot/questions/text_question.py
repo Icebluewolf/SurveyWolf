@@ -115,12 +115,12 @@ class TextQuestion(InputTextResponse):
 
     def get_input_text(self) -> discord.ui.InputText:
         return discord.ui.InputText(
-                    label=self.title[: min(len(self.title), 45)],
-                    min_length=self.min_length,
-                    max_length=self.max_length,
-                    required=self.required,
-                    style=discord.InputTextStyle.long,
-                )
+            label=self.title[: min(len(self.title), 45)],
+            min_length=self.min_length,
+            max_length=self.max_length,
+            required=self.required,
+            style=discord.InputTextStyle.long,
+        )
 
     async def handle_input_text_response(self, text: str) -> str | None:
         self.value = text

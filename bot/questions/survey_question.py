@@ -210,10 +210,13 @@ class GetBaseInfo(discord.ui.Modal):
 async def from_db(row) -> SurveyQuestion:
     if row["type"] == QuestionType.TEXT.value:
         from questions.text_question import TextQuestion
+
         return await TextQuestion.fetch(row["id"])
     elif row["type"] == QuestionType.MULTIPLE_CHOICE.value:
         from questions.multiple_choice import MultipleChoice
+
         return await MultipleChoice.fetch(row["id"])
     elif row["type"] == QuestionType.DATETIME.value:
         from questions.datetime_question import DateQuestion
+
         return await DateQuestion.fetch(row["id"])

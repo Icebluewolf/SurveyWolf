@@ -124,7 +124,6 @@ class SurveyTemplate:
                 question.position = n
                 await question.save(n, conn)
 
-
     async def delete(self) -> None:
         sql = "DELETE FROM surveys.template WHERE guild_id=$1 AND id=$2;"
         await db.execute(sql, self.guild_id, self._id)

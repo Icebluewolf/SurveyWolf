@@ -327,7 +327,7 @@ class EditQuestions(discord.ui.View):
             description="The User Must Enter A Date, Time, Date And Time, Or Duration",
             value=str(QuestionType.DATETIME.value),
             emoji="📅",
-        )
+        ),
     ]
 
     @discord.ui.select(placeholder="Add New Question", options=options, row=4)

@@ -19,10 +19,7 @@ class MultipleChoiceOption:
         return self.text
 
     async def create_data(self) -> dict:
-        return {
-            "text": self.text,
-            "id": self.id
-        }
+        return {"text": self.text, "id": self.id}
 
     @classmethod
     async def load(cls, data: dict):
@@ -59,13 +56,18 @@ class MultipleChoice(SurveyQuestion):
         e = discord.Embed(title=self.title, description=self.description)
         e.add_field(name="Required", value=str(self.required))
         if self.min_selects == self.max_selects:
-            e.add_field(name="Selections",
-                        value=f"Must Select {self.min_selects} Option{"s" if self.min_selects != 1 else ""}")
+            e.add_field(
+                name="Selections", value=f"Must Select {self.min_selects} Option{"s" if self.min_selects != 1 else ""}"
+            )
         else:
-            e.add_field(name="Selections",
-                        value=f"Must Select Between {self.min_selects} And {self.max_selects} Options Inclusive")
+            e.add_field(
+                name="Selections",
+                value=f"Must Select Between {self.min_selects} And {self.max_selects} Options Inclusive",
+            )
         if with_options:
-            e.add_field(name="Options", value="- " + "\n- ".join([await x.display() for x in self.options]), inline=False)
+            e.add_field(
+                name="Options", value="- " + "\n- ".join([await x.display() for x in self.options]), inline=False
+            )
         return e
 
     async def short_display(self) -> str:
@@ -124,15 +126,13 @@ class MultipleChoice(SurveyQuestion):
             self._id = record[0]["id"]
 
     async def _create_response_data(self) -> dict:
-        return {
-            "selected": [x.id for x in self.selected]
-        }
+        return {"selected": [x.id for x in self.selected]}
 
     async def _create_data(self) -> dict:
         return {
             "min_selects": self.min_selects,
             "max_selects": self.max_selects,
-            "options": [await x.create_data() for x in self.options]
+            "options": [await x.create_data() for x in self.options],
         }
 
     async def set_up(self, interaction: discord.Interaction) -> discord.Interaction:
@@ -218,8 +218,7 @@ class AddChoices(discord.ui.View):
             if len(display_options) == 0:
                 display_options.append(discord.SelectOption(label="No Options To Edit"))
                 disabled = True
-            super().__init__(options=display_options,
-                             placeholder="Select A Option To Edit", disabled=disabled)
+            super().__init__(options=display_options, placeholder="Select A Option To Edit", disabled=disabled)
             self.question_options: list[MultipleChoiceOption] = options
 
         async def update(self, selected: list[MultipleChoiceOption]):
@@ -247,8 +246,7 @@ class AddChoices(discord.ui.View):
             if len(display_options) == 0:
                 disabled = True
                 display_options.append(discord.SelectOption(label="No Options To Delete"))
-            super().__init__(options=display_options,
-                             placeholder="Select A Option To Delete", disabled=disabled)
+            super().__init__(options=display_options, placeholder="Select A Option To Delete", disabled=disabled)
             self.question_options: list[MultipleChoiceOption] = options
 
         async def update(self, selected: list[MultipleChoiceOption]):
@@ -277,7 +275,9 @@ class AddChoices(discord.ui.View):
 
     async def _create_embed(self) -> discord.Embed:
         prefix = "- " if len(self.question.options) > 0 else ""
-        return await general(title="Options", message=prefix + "\n- ".join([await x.display() for x in self.question.options]))
+        return await general(
+            title="Options", message=prefix + "\n- ".join([await x.display() for x in self.question.options])
+        )
 
     async def update(self, interaction: discord.Interaction):
         if len(self.question.options) == 0:
@@ -329,14 +329,16 @@ class Options(discord.ui.Modal):
         else:
             size = min(5, 20 - len(self.question.options))
         for i in range(size):
-            self.add_item(discord.ui.InputText(
-                label="Option Choice",
-                placeholder="Can Be A Maximum Of 80 Characters",
-                min_length=0,
-                max_length=80,
-                required=False,
-                value=None if not prefill else prefill.text
-            ))
+            self.add_item(
+                discord.ui.InputText(
+                    label="Option Choice",
+                    placeholder="Can Be A Maximum Of 80 Characters",
+                    min_length=0,
+                    max_length=80,
+                    required=False,
+                    value=None if not prefill else prefill.text,
+                )
+            )
 
     async def callback(self, interaction: Interaction):
         self.interaction = interaction
@@ -371,7 +373,9 @@ class ResponseView(discord.ui.View):
 
     class ChoiceSelect(discord.ui.Select):
         def __init__(self, question: MultipleChoice):
-            super().__init__(placeholder="Select Options", min_values=question.min_selects, max_values=question.max_selects)
+            super().__init__(
+                placeholder="Select Options", min_values=question.min_selects, max_values=question.max_selects
+            )
             self.option_map = {x.id: x for x in question.options}
             for option in question.options:
                 self.add_option(label=option.text, value=str(option.id), default=option in question.selected)

@@ -75,7 +75,9 @@ class DateQuestion(InputTextResponse):
     async def short_display(self) -> str:
         return f"{self.title} {self.description}\n\nFormat: {self.type.human_readable()}"
 
-    async def _get_storable_format(self, obj: datetime.datetime | datetime.time | datetime.timedelta | datetime.date) -> str:
+    async def _get_storable_format(
+        self, obj: datetime.datetime | datetime.time | datetime.timedelta | datetime.date
+    ) -> str:
         if obj is None:
             return ""
         if self.type == DateQuestionType.DATETIME:
@@ -88,7 +90,9 @@ class DateQuestion(InputTextResponse):
             raise TypeError("value must be of type DateQuestionType")
         return str(timestamp)
 
-    async def _get_discord_format(self, obj: datetime.datetime | datetime.time | datetime.timedelta | datetime.date | None) -> str:
+    async def _get_discord_format(
+        self, obj: datetime.datetime | datetime.time | datetime.timedelta | datetime.date | None
+    ) -> str:
         if obj is None:
             return "None"
         if self.type == DateQuestionType.DATETIME:
@@ -96,7 +100,9 @@ class DateQuestion(InputTextResponse):
         elif self.type == DateQuestionType.DATE:
             timestamp = discord.utils.format_dt(datetime.datetime.combine(obj, datetime.datetime.min.time()), "D")
         elif self.type == DateQuestionType.TIME:
-            timestamp = discord.utils.format_dt(datetime.datetime.combine(datetime.datetime.now(datetime.UTC).date(), obj), "T")
+            timestamp = discord.utils.format_dt(
+                datetime.datetime.combine(datetime.datetime.now(datetime.UTC).date(), obj), "T"
+            )
         elif self.type == DateQuestionType.DURATION:
             timestamp = str(obj)
         else:
@@ -116,7 +122,9 @@ class DateQuestion(InputTextResponse):
             placeholder = ""
         return placeholder
 
-    async def _from_storable_format(self, timestamp: str) -> datetime.datetime | datetime.time | datetime.timedelta | datetime.date | None:
+    async def _from_storable_format(
+        self, timestamp: str
+    ) -> datetime.datetime | datetime.time | datetime.timedelta | datetime.date | None:
         if timestamp == "":
             return None
         if self.type == DateQuestionType.DATETIME:
@@ -219,18 +227,20 @@ class DateQuestion(InputTextResponse):
                 if self.type == DateQuestionType.DATE:
                     converted = datetime_parser(text, dayfirst=True, yearfirst=False).date()
                 elif self.type == DateQuestionType.TIME:
-                    t = datetime_parser(text,
-                                        dayfirst=True,
-                                        yearfirst=False,
-                                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
-                                        ).timetz()
+                    t = datetime_parser(
+                        text,
+                        dayfirst=True,
+                        yearfirst=False,
+                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc),
+                    ).timetz()
                     converted = t
                 elif self.type == DateQuestionType.DATETIME:
-                    t = datetime_parser(text,
-                                        dayfirst=True,
-                                        yearfirst=False,
-                                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
-                                        )
+                    t = datetime_parser(
+                        text,
+                        dayfirst=True,
+                        yearfirst=False,
+                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc),
+                    )
                     converted = t
                 elif self.type == DateQuestionType.DURATION:
                     delta = Timer.str_time(text)
@@ -297,6 +307,7 @@ class TypeButton(discord.ui.Button):
         self.date_type = date_type
 
     if TYPE_CHECKING:
+
         @property
         def view(self) -> Settings: ...
 
@@ -325,8 +336,24 @@ class MinMaxModal(discord.ui.Modal):
 
         placeholder = self.q.prompt_user_format()
 
-        self.add_item(discord.ui.InputText(label="Minimum", placeholder=placeholder, required=False, style=discord.InputTextStyle.long, value=minimum))
-        self.add_item(discord.ui.InputText(label="Maximum", placeholder=placeholder, required=False, style=discord.InputTextStyle.long, value=maximum))
+        self.add_item(
+            discord.ui.InputText(
+                label="Minimum",
+                placeholder=placeholder,
+                required=False,
+                style=discord.InputTextStyle.long,
+                value=minimum,
+            )
+        )
+        self.add_item(
+            discord.ui.InputText(
+                label="Maximum",
+                placeholder=placeholder,
+                required=False,
+                style=discord.InputTextStyle.long,
+                value=maximum,
+            )
+        )
 
     async def callback(self, interaction: Interaction):
         formated = []
@@ -344,18 +371,20 @@ class MinMaxModal(discord.ui.Modal):
                 if self.q.type == DateQuestionType.DATE:
                     formated.append(datetime_parser(child.value, dayfirst=True, yearfirst=False).date())
                 elif self.q.type == DateQuestionType.TIME:
-                    t = datetime_parser(child.value,
-                                        dayfirst=True,
-                                        yearfirst=False,
-                                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
-                                        ).timetz()
+                    t = datetime_parser(
+                        child.value,
+                        dayfirst=True,
+                        yearfirst=False,
+                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc),
+                    ).timetz()
                     formated.append(t)
                 elif self.q.type == DateQuestionType.DATETIME:
-                    t = datetime_parser(child.value,
-                                        dayfirst=True,
-                                        yearfirst=False,
-                                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
-                                        )
+                    t = datetime_parser(
+                        child.value,
+                        dayfirst=True,
+                        yearfirst=False,
+                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc),
+                    )
                     formated.append(t)
                 elif self.q.type == DateQuestionType.DURATION:
                     delta = Timer.str_time(child.value)
@@ -383,7 +412,7 @@ class MinMaxModal(discord.ui.Modal):
             em = discord.Embed(
                 title="Some Settings Failed",
                 description="Below Are The Errors Of The Settings That Were Not Inputted Correctly. If "
-                            "There Is Not An Error The Setting Was Successfully Set.",
+                "There Is Not An Error The Setting Was Successfully Set.",
                 color=0xD33033,
             )
             em.add_field(name="Errors", value="\n".join(errors))
