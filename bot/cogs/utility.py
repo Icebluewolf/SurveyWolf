@@ -1,6 +1,6 @@
 import discord
 from discord import slash_command
-from utils import embed_factory as ef
+from utils import component_factory as ef
 
 
 class Utility(discord.Cog):
@@ -10,7 +10,7 @@ class Utility(discord.Cog):
     @slash_command()
     async def ping(self, ctx):
         await ctx.respond(
-            embed=await ef.general("🏓 Ping", str(self.bot.latency * 1000)),
+            view=discord.ui.View(await ef.general("🏓 Ping", str(self.bot.latency * 1000)), timeout=0),
             ephemeral=True,
         )
 
@@ -26,28 +26,22 @@ class Utility(discord.Cog):
             "we will do our best to assist you."
         )
 
-        e = await ef.general(
+        c = await ef.general(
             title=self.bot.user.name
             + (f"#{self.bot.user.discriminator}" if self.bot.user.discriminator != "0" else ""),
             message=desc,
         )
-        e.add_field(
-            name="Support",
-            value="If You Have An Issue With The Bot Please Join The Support Server [Here]("
+        c.add_text(
+            "### Support\nIf You Have An Issue With The Bot Please Join The Support Server [Here]("
             'https://discord.gg/f39cJ9D/ "Survey Wolf Official Support Server")',
         )
-        e.add_field(name="Credits", value="Main Bot Developer: icewolfy (451848182327148554)")
-        e.add_field(name="Technical", value="Uses Python V3 And [Pycord](https://pycord.dev/) V2. Database: PostgreSQL")
-        e.add_field(
-            name="Hosting",
-            value="Hosted On Digital Ocean",
-        )
-        e.add_field(
-            name="Documents",
-            value="""[Privacy Policy](https://gist.github.com/Icebluewolf/90335bbc4d82d435d437b5da98f71df6)
-            [Terms Of Service](https://gist.github.com/Icebluewolf/7e73be418408ac48a35deb8045ae2a29)""",
-        )
-        await ctx.respond(embed=e, ephemeral=True)
+        c.add_text("### Credits\nMain Bot Developer: icewolfy (451848182327148554)")
+        c.add_text("### Technical\nUses Python V3 And [Pycord](https://pycord.dev/) V2. Database: PostgreSQL")
+        c.add_text("### Hosting\nHosted On Digital Ocean")
+        c.add_text("### Documents\n"
+                   "[Privacy Policy](https://gist.github.com/Icebluewolf/90335bbc4d82d435d437b5da98f71df6)\n"
+                   "[Terms Of Service](https://gist.github.com/Icebluewolf/7e73be418408ac48a35deb8045ae2a29)")
+        await ctx.respond(view=discord.ui.View(c, timeout=0), ephemeral=True)
 
 
 def setup(bot):

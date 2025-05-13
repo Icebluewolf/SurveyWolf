@@ -3,7 +3,7 @@ from typing import Self
 
 import discord.ui
 from discord import Interaction
-from utils import embed_factory as ef
+from utils import component_factory as cf
 
 from questions.survey_question import SurveyQuestion
 
@@ -66,9 +66,9 @@ class GetResponse(discord.ui.Modal):
                 errors.append(e)
         if retry:
             b = RetryButton(retry)
-            v = discord.ui.View(b)
-            e = await ef.input_error("Some Questions Had Invalid Inputs", errors)
-            await interaction.response.send_message(embed=e, view=v, ephemeral=True)
+            c = await cf.input_error("Some Questions Had Invalid Inputs", errors)
+            v = discord.ui.View(c, b)
+            await interaction.response.send_message(view=v, ephemeral=True)
             await v.wait()
             self.interaction = b.interaction
 

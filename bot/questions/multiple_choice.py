@@ -4,7 +4,7 @@ from discord import Interaction
 
 from questions.survey_question import SurveyQuestion, QuestionType, GetBaseInfo
 from utils.database import database as db
-from utils.embed_factory import general
+from utils.component_factory import general
 
 
 class MultipleChoiceOption:
@@ -48,26 +48,35 @@ class MultipleChoice(SurveyQuestion):
 
     async def send_question(self, interaction: discord.Interaction) -> discord.Interaction:
         v = ResponseView(self)
-        await interaction.respond(view=v, embed=await v.create_embed(), ephemeral=True)
+        # TODO: Move This into the view
+        v.add_item(await v.create_container())
+        await interaction.respond(view=v, ephemeral=True)
         await v.wait()
         return v.interaction
 
-    async def display(self, with_options: bool = True) -> discord.Embed:
-        e = discord.Embed(title=self.title, description=self.description)
-        e.add_field(name="Required", value=str(self.required))
+    async def display(self, with_options: bool = True) -> discord.ui.Container:
+        # e = discord.Embed(title=self.title, description=self.description)
+        # e.add_field(name="Required", value=str(self.required))
+        e = discord.ui.Container()
+        text = f"### {self.title}\n{self.description}"
+        text += f"\n**Required:** {str(self.required)}"
         if self.min_selects == self.max_selects:
-            e.add_field(
-                name="Selections", value=f"Must Select {self.min_selects} Option{"s" if self.min_selects != 1 else ""}"
-            )
+            # e.add_field(
+            #     name="Selections", value=f"Must Select {self.min_selects} Option{"s" if self.min_selects != 1 else ""}"
+            # )
+            text += f"\n**Selections:** Must Select {self.min_selects} Option{"s" if self.min_selects != 1 else ""}"
         else:
-            e.add_field(
-                name="Selections",
-                value=f"Must Select Between {self.min_selects} And {self.max_selects} Options Inclusive",
-            )
+            # e.add_field(
+            #     name="Selections",
+            #     value=f"Must Select Between {self.min_selects} And {self.max_selects} Options Inclusive",
+            # )
+            text += f"\n**Selections:** Must Select Between {self.min_selects} And {self.max_selects} Options Inclusive"
         if with_options:
-            e.add_field(
-                name="Options", value="- " + "\n- ".join([await x.display() for x in self.options]), inline=False
-            )
+            # e.add_field(
+            #     name="Options", value="- " + "\n- ".join([await x.display() for x in self.options]), inline=False
+            # )
+            text += f"\n**Options:**\n{"- " + "\n- ".join([await x.display() for x in self.options])}"
+        e.add_text(text)
         return e
 
     async def short_display(self) -> str:
@@ -140,8 +149,10 @@ class MultipleChoice(SurveyQuestion):
         await interaction.response.send_modal(m)
         await m.wait()
         interaction = m.interaction
+        # TODO: Add container on top
         v = AddChoices(self)
-        await interaction.response.edit_message(embed=await general("Options"), view=v)
+        v.add_item(await general("Options"), 0)
+        await interaction.response.edit_message(view=v)
         if not await v.wait():
             return v.interaction
 
@@ -273,7 +284,7 @@ class AddChoices(discord.ui.View):
         self.add_item(self.edit_select)
         self.add_item(self.delete_select)
 
-    async def _create_embed(self) -> discord.Embed:
+    async def _create_container(self) -> discord.ui.Container:
         prefix = "- " if len(self.question.options) > 0 else ""
         return await general(
             title="Options", message=prefix + "\n- ".join([await x.display() for x in self.question.options])
@@ -299,7 +310,9 @@ class AddChoices(discord.ui.View):
         else:
             self.add_options.disabled = False
 
-        await interaction.response.edit_message(view=self, embed=await self._create_embed())
+        # TODO: Add the container on top
+        self.add_item(await self._create_container(), 0)
+        await interaction.response.edit_message(view=self)
 
     @discord.ui.button(label="Add Options", style=discord.ButtonStyle.blurple)
     async def add_options(self, button: discord.Button, interaction: discord.Interaction):
@@ -392,7 +405,7 @@ class ResponseView(discord.ui.View):
         if question.required:
             self.remove_item(self.skip)
 
-    async def create_embed(self) -> discord.Embed:
+    async def create_container(self) -> discord.ui.Container:
         e = await self.question.display(False)
         return e
 
