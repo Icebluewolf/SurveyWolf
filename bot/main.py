@@ -5,7 +5,7 @@ from utils.bot import SurveyWolf
 
 load_dotenv()
 
-COGS = ["utility", "survey.creation", "survey.active", "survey.results"]
+COGS = ["utility", "survey.creation", "survey.active", "survey.results", "developer"]
 
 intents = discord.Intents.default()
 
