@@ -46,10 +46,12 @@ class SurveyWolf(discord.Bot, ABC):
             return
         self._did_on_ready = True
         # Do Some Additional Processing On Some Config Items
-        self.config.update({
-            "error_logging_webhook": await self._create_webhook(self.config["error_logging_webhook"]),
-            "server_join_leave_webhook": await self._create_webhook(self.config["server_join_leave_webhook"]),
-        })
+        self.config.update(
+            {
+                "error_logging_webhook": await self._create_webhook(self.config["error_logging_webhook"]),
+                "server_join_leave_webhook": await self._create_webhook(self.config["server_join_leave_webhook"]),
+            }
+        )
 
     async def _create_webhook(self, url: str) -> discord.Webhook | None:
         if url == "None":
@@ -97,9 +99,7 @@ class SurveyWolf(discord.Bot, ABC):
         texts.append(text)
         return texts
 
-    async def on_application_command_error(
-        self, ctx: ApplicationContext, exception: DiscordException
-    ) -> None:
+    async def on_application_command_error(self, ctx: ApplicationContext, exception: DiscordException) -> None:
         if (w := self.config["error_logging_webhook"]) is not None:
             text = f"Error In {ctx.command.qualified_name} Guild ID: {ctx.guild_id} Channel ID: {ctx.channel_id}\n"
             text += "".join(traceback.format_exception(type(exception), exception, exception.__traceback__))
