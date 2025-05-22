@@ -51,7 +51,9 @@ class ActiveSurvey:
             template = self.template._id
         else:
             template = self.template
-        self._id = await db.fetchval(sql, self.end.astimezone(UTC).replace(tzinfo=None), template, self._channel_id, self._message_id)
+        self._id = await db.fetchval(
+            sql, self.end.astimezone(UTC).replace(tzinfo=None), template, self._channel_id, self._message_id
+        )
 
     async def send(self, interaction: discord.Interaction, message: str):
         v = ActiveSurveyView(self)
