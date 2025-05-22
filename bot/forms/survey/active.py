@@ -20,7 +20,7 @@ class ActiveSurvey:
         if end is None:
             self.end = datetime.now() + template.duration
         elif isinstance(end, datetime):
-            self.end = end
+            self.end = end.replace(tzinfo=UTC)
         elif isinstance(end, timedelta):
             self.end = datetime.now() + end
         self._channel_id = None
@@ -51,7 +51,7 @@ class ActiveSurvey:
             template = self.template._id
         else:
             template = self.template
-        self._id = await db.fetchval(sql, self.end, template, self._channel_id, self._message_id)
+        self._id = await db.fetchval(sql, self.end.astimezone(UTC).replace(tzinfo=None), template, self._channel_id, self._message_id)
 
     async def send(self, interaction: discord.Interaction, message: str):
         v = ActiveSurveyView(self)
@@ -196,7 +196,7 @@ class DataSharingConsent(discord.ui.View):
 
 async def load_active_surveys():
     sql = """SELECT "id", end_date, template_id, channel_id, message_id FROM surveys.active_guild_surveys
-    WHERE end_date > NOW();"""
+    WHERE end_date > (NOW() AT TIME ZONE 'utc');"""
     rows = await db.fetch(sql)
     views = []
     for row in rows:
