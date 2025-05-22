@@ -6,7 +6,7 @@ from asyncpg import Record
 
 from forms.survey.template import SurveyTemplate
 from utils.database import database as db
-from utils import embed_factory as ef
+from utils import component_factory as cf
 from utils.timers import Timer
 from utils.utils import encrypt_id
 
@@ -56,9 +56,11 @@ class ActiveSurvey:
         )
 
     async def send(self, interaction: discord.Interaction, message: str):
+        # TODO: Make Containers Go Above The Rest
         v = ActiveSurveyView(self)
+        v.add_item(await cf.general("Take The Survey Below!", message=message), 0)
+        v.add_item(await self.template.summary(self.end), 1)
         await interaction.followup.send(
-            embeds=[await ef.general("Take The Survey Below!", message=message), await self.template.summary(self.end)],
             view=v,
         )
         await self.start_timer(v.end_survey)
@@ -82,7 +84,10 @@ class ActiveSurveyView(discord.ui.View):
     async def end_survey(self):
         await self.survey.end_survey()
         self.disable_all_items()
-        await self.message.edit(embeds=[await ef.general("This Survey Has Ended"), self.message.embeds[1]], view=self)
+        # TODO: Make Containers On Top
+        self.add_item(await cf.general("This Survey Has Ended"), 0)
+        self.add_item(self.message.components[1], 1)
+        await self.message.edit(view=self)
         self.stop()
 
 
@@ -97,7 +102,7 @@ class SurveyButton(discord.ui.Button):
         # Check If Time Is Up On The Survey
         if self.view.survey.end and self.view.survey.end < datetime.now():
             await self.view.end_survey()
-            return await interaction.respond(embed=await ef.fail("Sorry! This Survey Has Ended"), ephemeral=True)
+            return await interaction.respond(view=discord.ui.View(await cf.fail("Sorry! This Survey Has Ended"), timeout=0), ephemeral=True)
 
         # await interaction.response.defer()
 
@@ -125,9 +130,9 @@ class SurveyButton(discord.ui.Button):
             times_taken = 0
         if times_taken >= template.entries_per_user:
             return await interaction.respond(
-                embed=await ef.fail(
+                view=discord.ui.View(await cf.fail(
                     f"You Have Taken The Survey The Maximum Amount Of Times (`{template.entries_per_user}`)"
-                ),
+                ), timeout=0),
                 ephemeral=True,
             )
 
@@ -140,7 +145,7 @@ class SurveyButton(discord.ui.Button):
             if total_responses >= template.max_entries:
                 await self.view.end_survey()
                 return await interaction.respond(
-                    embed=await ef.fail("Sorry! This Survey Has Reached The Maximum Amount Of Entries"), ephemeral=True
+                    view=discord.ui.View(await cf.fail("Sorry! This Survey Has Reached The Maximum Amount Of Entries"), timeout=0), ephemeral=True
                 )
 
         # Finally Send The Survey

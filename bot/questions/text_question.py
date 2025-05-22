@@ -22,10 +22,14 @@ class TextQuestion(InputTextResponse):
 
         self.value: str = ""
 
-    async def display(self) -> discord.Embed:
-        e = discord.Embed(title=self.title, description=self.description)
-        e.add_field(name="Required", value=str(self.required))
-        e.add_field(name="Length", value=f"Between {self.min_length} And {self.max_length} Inclusive")
+    async def display(self) -> discord.ui.Container:
+        # e = discord.Embed(title=self.title, description=self.description)
+        # e.add_field(name="Required", value=str(self.required))
+        # e.add_field(name="Length", value=f"Between {self.min_length} And {self.max_length} Inclusive")
+        e = discord.ui.Container()
+        e.add_text(f"""### {self.title}\n{self.description}
+        **Required:** {str(self.required)}
+        **Length:** Between {self.min_length} And {self.max_length} Inclusive""")
         return e
 
     async def short_display(self) -> str:
