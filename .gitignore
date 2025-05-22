@@ -1,6 +1,7 @@
+# My Additions
+config.yaml
+
 # Heavily Based On https://github.com/github/gitignore/blob/main/Python.gitignore
-
-
 # Jet Brains
 .idea/
 
