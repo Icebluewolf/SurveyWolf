@@ -6,7 +6,7 @@ import yaml
 
 import discord
 from utils.database import database
-from . import embed_factory as ef
+from . import component_factory as cf
 from discord import Interaction, ApplicationContext, DiscordException
 
 
@@ -104,8 +104,9 @@ class SurveyWolf(discord.Bot, ABC):
             text = f"Error In {ctx.command.qualified_name} Guild ID: {ctx.guild_id} Channel ID: {ctx.channel_id}\n"
             text += "".join(traceback.format_exception(type(exception), exception, exception.__traceback__))
             for i in self._split_text(text, 1990, newline=True):
-                await w.send(f"```py\n{i}\n```")
-        await ctx.respond(embed=await ef.error("An Error Occurred"))
+                c = discord.ui.Container(discord.ui.TextDisplay(f"```py\n{i}\n```"))
+                await w.send(c)
+        await ctx.respond(view=await cf.error("An Error Occurred"))
         raise exception
 
     async def on_error(self, event_method: str, *args: Any, **kwargs: Any) -> None:
@@ -113,5 +114,6 @@ class SurveyWolf(discord.Bot, ABC):
             text = "Error In " + event_method + "\n"
             text += traceback.format_exc()
             for i in self._split_text(text, 1990, newline=True):
-                await w.send(f"```py\n{i}\n```")
+                c = discord.ui.Container(discord.ui.TextDisplay(f"```py\n{i}\n```"))
+                await w.send(c)
         traceback.print_exc()

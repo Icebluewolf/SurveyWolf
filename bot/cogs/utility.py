@@ -1,6 +1,6 @@
 import discord
 from discord import slash_command
-from utils import component_factory as ef
+from utils import component_factory as cf
 
 
 class Utility(discord.Cog):
@@ -10,7 +10,7 @@ class Utility(discord.Cog):
     @slash_command()
     async def ping(self, ctx):
         await ctx.respond(
-            view=discord.ui.View(await ef.general("🏓 Ping", str(self.bot.latency * 1000)), timeout=0),
+            view=discord.ui.View(await cf.general("🏓 Ping", str(self.bot.latency * 1000)), timeout=0),
             ephemeral=True,
         )
 
@@ -26,7 +26,7 @@ class Utility(discord.Cog):
             "we will do our best to assist you."
         )
 
-        c = await ef.general(
+        c = await cf.general(
             title=self.bot.user.name
             + (f"#{self.bot.user.discriminator}" if self.bot.user.discriminator != "0" else ""),
             message=desc,
