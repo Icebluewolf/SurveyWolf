@@ -74,5 +74,16 @@ class Database:
             if conn is not None:
                 await self._recycle(conn)
 
+    def transactional(self, func):
+        """
+        A Decorator That Will Get A Connection If One Is Not Provided To The Base Function
+        :param func: A callable with `conn` as a keyword argument that can be typed to `asyncpg.Connection`
+        """
+        async def wrapper(*args, conn: asyncpg.Connection = None, **kwargs):
+            if conn is not None:
+                return await func(*args, conn=conn, **kwargs)
+            return await func(*args, conn=await self._acquire(), **kwargs)
+        return wrapper
+
 
 database = Database()

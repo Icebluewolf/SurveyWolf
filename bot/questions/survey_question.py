@@ -7,13 +7,9 @@ from enum import Enum
 from utils import embed_factory as ef
 from utils.database import database as db
 
-# Use Of Lazy Imports In The `from_db` Function
-
-
-class QuestionType(Enum):
-    TEXT = 0
-    MULTIPLE_CHOICE = 1
-    DATETIME = 2
+from questions.text import TextQuestion
+from questions.multiple_choice import MultipleChoice
+from questions.datetime import DateQuestion
 
 
 class SurveyQuestion(ABC):
@@ -46,17 +42,14 @@ class SurveyQuestion(ABC):
         self.template = template_id
 
     @classmethod
+    @abstractmethod
     async def fetch(cls, id: int):
         """
         Gets The Question From The Database By ID
         :param id: The ID of the question
         :return: An instance of the class it is called on
         """
-        sql = """
-                SELECT text, questions.id, position, survey_id, required, description, type, question_data 
-                FROM surveys.questions
-                WHERE questions.id=$1;"""
-        return await cls.load(await db.fetch_one(sql, id))
+        raise NotImplementedError
 
     @abstractmethod
     async def set_up(self, interaction: discord.Interaction) -> discord.Interaction:
@@ -93,47 +86,43 @@ class SurveyQuestion(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def _create_data(self) -> dict:
-        """
-        Creates The JSONB Data For The Question To Be Inserted Into The Questions Table Of The Database
-        :return: A dict that is converted to string by asyncpg
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    async def _create_response_data(self) -> dict:
-        """
-        Creates The JSONB Data For The Response To The Question To Be Inserted Into The Responses Table Of The Database
-        :return: A dict that is converted to string by asyncpg
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    async def save(self, position: int, conn: Connection = None) -> None:
+    @db.transactional
+    async def save(self, conn: Connection) -> None:
         """
         Save The Question To The Database
-        :param position: The position of the question in the ordered list of questions
-        :param conn: The database connection to use. Useful for batching requests
+        :param conn: Connection to use. Useful for batching requests
         """
-        raise NotImplementedError
+        if self._id:
+            sql = """UPDATE surveys.questions SET text=$1, position=$2, required=$3, description=$4 WHERE id=$5;"""
+            await conn.execute(sql, self.title, self.position, self.required, self.description, self._id)
+        else:
+            sql = """INSERT INTO surveys.questions (text, position, survey_id, required, description, type) 
+            VALUES ($1, $2, $3, $4, $5, $6) RETURNING id;"""
+            record = await conn.fetch(sql, self.title, self.position, self.template, self.required, self.description, cls_question[self.__class__])
+            self._id = record[0]["id"]
 
-    @abstractmethod
-    async def delete(self) -> None:
+    @db.transactional
+    async def delete(self, conn: Connection) -> None:
         """
         Deletes The Question From The Database
+        The deletion should cascade to the question specific tables so this method does not need to be overridden
         """
-        raise NotImplementedError
+        if self._id is None:
+            raise AttributeError("Cannot delete a question without an ID")
+
+        sql = """DELETE FROM surveys.questions WHERE id=$1;"""
+        await conn.execute(sql, self._id)
 
     @abstractmethod
-    async def save_response(self, conn: Connection, encrypted_user_id: str, active_id: int, response_id: int) -> None:
+    async def save_response(self, conn: Connection, response_id: int) -> int:
         """
         Saves The Users Response To This Question To The Database
         :param conn: The Database connection to use. Useful for batching requests
-        :param encrypted_user_id: The user ID of the user that submitted the answer
-        :param active_id: The ID of the survey
         :param response_id: The ID of the main response row
+        :return The Response ID
         """
-        raise NotImplementedError
+        sql = """INSERT INTO surveys.question_response (response, question) VALUES ($1, $2) RETURNING id;"""
+        return await conn.fetchval(sql, response_id, self._id)
 
     @classmethod
     @abstractmethod
@@ -150,10 +139,10 @@ class SurveyQuestion(ABC):
         return q
 
     @abstractmethod
-    async def view_response(self, response: dict) -> str:
+    async def view_response(self, response: Record) -> str:
         """
         A Short String Representation Of The Response To The Question
-        :param response: The JSONB response data column from the question response row
+        :param response: The Record From The Question Specific Response Data
         :return: A string representation of the questions response
         """
         raise NotImplementedError
@@ -207,16 +196,18 @@ class GetBaseInfo(discord.ui.Modal):
             )
 
 
-async def from_db(row) -> SurveyQuestion:
-    if row["type"] == QuestionType.TEXT.value:
-        from questions.text_question import TextQuestion
+class QuestionType(Enum):
+    TEXT = 0
+    MULTIPLE_CHOICE = 1
+    DATETIME = 2
 
-        return await TextQuestion.fetch(row["id"])
-    elif row["type"] == QuestionType.MULTIPLE_CHOICE.value:
-        from questions.multiple_choice import MultipleChoice
 
-        return await MultipleChoice.fetch(row["id"])
-    elif row["type"] == QuestionType.DATETIME.value:
-        from questions.datetime_question import DateQuestion
+question_cls: dict[QuestionType, type[SurveyQuestion]] = {
+        QuestionType.TEXT: TextQuestion,
+        QuestionType.MULTIPLE_CHOICE: MultipleChoice,
+        QuestionType.DATETIME: DateQuestion,
+    }
+cls_question: dict[type[SurveyQuestion], QuestionType] = {v: k for k, v in question_cls.items()}
 
-        return await DateQuestion.fetch(row["id"])
+async def from_db(row: Record) -> SurveyQuestion:
+    return await question_cls[QuestionType(row["type"])].fetch(row["id"])

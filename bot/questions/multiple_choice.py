@@ -29,7 +29,6 @@ class MultipleChoiceOption:
 
 
 class MultipleChoice(SurveyQuestion):
-    QUESTION_TYPE = QuestionType.MULTIPLE_CHOICE
 
     # This Only Needs To Be Unique Per Question
     OPTION_ID_COUNTER: int = 0
@@ -45,6 +44,15 @@ class MultipleChoice(SurveyQuestion):
         self.max_selects: int = 1
 
         self.selected: set[MultipleChoiceOption] = set()
+
+    @classmethod
+    async def fetch(cls, id: int):
+        sql = """
+                SELECT * FROM surveys.questions 
+                JOIN surveys.question_multiple_choice qd ON questions.id = qd.id 
+                WHERE questions.id=$1
+            """
+        return await cls.load(await db.fetch_one(sql, id))
 
     async def send_question(self, interaction: discord.Interaction) -> discord.Interaction:
         v = ResponseView(self)
@@ -73,67 +81,27 @@ class MultipleChoice(SurveyQuestion):
     async def short_display(self) -> str:
         return f"{self.title} {self.description}"
 
-    async def view_response(self, response: dict) -> str:
+    async def view_response(self, response: Record) -> str:
         options = {x.id: x.text for x in self.options}
         result = ", ".join([options[x] for x in response["selected"]])
         return result
 
-    async def save_response(self, conn: Connection, encrypted_user_id: str, active_id: int, response_id: int) -> None:
-        if not self.selected:
-            return
-        sql = """INSERT INTO surveys.question_response (response, question, response_data) VALUES ($1, $2, $3);"""
-        await conn.execute(sql, response_id, self._id, await self._create_response_data())
-
-    async def delete(self) -> None:
-        sql = """DELETE FROM surveys.questions WHERE id=$1;"""
-        await db.execute(sql, self._id)
+    @db.transactional
+    async def save_response(self, conn: Connection, response_id: int) -> int:
+        resp = await super().save_response(conn=conn, response_id=response_id)
+        sql = """INSERT INTO surveys.question_response_multiple_choice (response, selected) VALUES ($1, $2);"""
+        await conn.execute(sql, resp, self.selected)
+        return resp
 
     async def save(self, position: int, conn: Connection = None) -> None:
-        if conn is None:
-            conn = db
+        await super().save(conn=conn)
+
         if self._id:
-            base_sql = """
-                UPDATE surveys.questions 
-                SET text=$2, position=$3, survey_id=$4, required=$5, description=$6, type=$7, question_data=$8
-                WHERE id=$1;
-            """
-            await conn.execute(
-                base_sql,
-                self._id,
-                self.title,
-                position,
-                self.template,
-                self.required,
-                self.description,
-                MultipleChoice.QUESTION_TYPE.value,
-                await self._create_data(),
-            )
+            sql = """UPDATE surveys.question_multiple_choice SET min_selects=$1, max_selects=$2, options=$3 WHERE id=$4;"""
+            await conn.execute(sql, self.min_selects, self.max_selects, [x.id for x in self.options], self._id)
         else:
-            base_sql = """
-                        INSERT INTO surveys.questions (text, position, survey_id, required, description, type, question_data) 
-                        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id;
-                        """
-            record = await conn.fetch(
-                base_sql,
-                self.title,
-                position,
-                self.template,
-                self.required,
-                self.description,
-                MultipleChoice.QUESTION_TYPE.value,
-                await self._create_data(),
-            )
-            self._id = record[0]["id"]
-
-    async def _create_response_data(self) -> dict:
-        return {"selected": [x.id for x in self.selected]}
-
-    async def _create_data(self) -> dict:
-        return {
-            "min_selects": self.min_selects,
-            "max_selects": self.max_selects,
-            "options": [await x.create_data() for x in self.options],
-        }
+            sql = """INSERT INTO surveys.question_multiple_choice (min_selects, max_selects, options, id) VALUES ($1, $2, $3, $4);"""
+            await conn.execute(sql, self.min_selects, self.max_selects, [x.id for x in self.options], self._id)
 
     async def set_up(self, interaction: discord.Interaction) -> discord.Interaction:
         m = GetMultipleChoiceQuestionInfo(self)
@@ -148,9 +116,9 @@ class MultipleChoice(SurveyQuestion):
     @classmethod
     async def load(cls, row: Record):
         q: cls = await super().load(row)
-        q.min_selects = row["question_data"]["min_selects"]
-        q.max_selects = row["question_data"]["max_selects"]
-        q.options = [await MultipleChoiceOption.load(x) for x in row["question_data"]["options"]]
+        q.min_selects = row["min_selects"]
+        q.max_selects = row["max_selects"]
+        q.options = [await MultipleChoiceOption.load(x) for x in row["options"]]
         return q
 
 

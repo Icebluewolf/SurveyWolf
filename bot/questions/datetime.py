@@ -9,7 +9,7 @@ from discord import Interaction
 from dateutil.parser import parse as datetime_parser, ParserError, UnknownTimezoneWarning
 
 from questions.input_text_response import InputTextResponse, GetResponse
-from questions.survey_question import QuestionType, GetBaseInfo
+from questions.survey_question import GetBaseInfo
 from utils.embed_factory import general
 from utils.database import database as db
 from utils.timers import Timer
@@ -35,7 +35,15 @@ class DateQuestionType(Enum):
 
 
 class DateQuestion(InputTextResponse):
-    QUESTION_TYPE = QuestionType.DATETIME
+
+    @classmethod
+    async def fetch(cls, id: int):
+        sql = """
+            SELECT * FROM surveys.questions 
+            JOIN surveys.question_datetime qd ON questions.id = qd.id 
+            WHERE questions.id=$1
+        """
+        return await cls.load(await db.fetch_one(sql, id))
 
     def __init__(self, title: str, survey_id: int):
         # This constructor is meant for creating new questions
@@ -139,74 +147,34 @@ class DateQuestion(InputTextResponse):
             raise TypeError("value must be of type DateQuestionType")
         return obj
 
-    async def _create_data(self) -> dict:
-        return {
-            "type": self.type.value,
-            "minimum": await self._get_storable_format(self.minimum),
-            "maximum": await self._get_storable_format(self.maximum),
-        }
-
-    async def _create_response_data(self) -> dict:
-        timestamp = await self._get_storable_format(self.value)
-        return {
-            "timestamp": timestamp,
-        }
-
-    async def save(self, position: int, conn: Connection = None) -> None:
-        # Setting conn to be either a Connection or my Database object is probably bad practice
-        if conn is None:
-            conn = db
+    @db.transactional
+    async def save(self, conn: Connection) -> None:
+        await super().save(conn=conn)
         if self._id:
-            base_sql = """
-                    UPDATE surveys.questions 
-                    SET text=$2, position=$3, survey_id=$4, required=$5, description=$6, type=$7, question_data=$8
-                    WHERE id=$1;
-                    """
-            await conn.execute(
-                base_sql,
-                self._id,
-                self.title,
-                position,
-                self.template,
-                self.required,
-                self.description,
-                DateQuestion.QUESTION_TYPE.value,
-                await self._create_data(),
-            )
+            sql = """UPDATE surveys.question_datetime SET type=$1, minimum=$2, maximum=$3 WHERE id=$4;"""
+            await conn.execute(sql, self.type, await self._get_storable_format(self.minimum),
+                               await self._get_storable_format(self.maximum), self._id)
         else:
-            base_sql = """
-                    INSERT INTO surveys.questions (text, position, survey_id, required, description, type, question_data) 
-                    VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id;
-                    """
-            record = await conn.fetch(
-                base_sql,
-                self.title,
-                position,
-                self.template,
-                self.required,
-                self.description,
-                DateQuestion.QUESTION_TYPE.value,
-                await self._create_data(),
-            )
-            self._id = record[0]["id"]
+            sql = """INSERT INTO surveys.question_datetime (type, minimum, maximum, id) VALUES ($1, $2, $3, $4)"""
+            await conn.execute(sql, self.type, await self._get_storable_format(self.minimum),
+                               await self._get_storable_format(self.maximum), self._id)
 
     @classmethod
     async def load(cls, row: Record):
         q = await super().load(row)
-        q.type = DateQuestionType(row["question_data"]["type"])
-        q.minimum = await cls._from_storable_format(q, row["question_data"]["minimum"])
-        q.maximum = await cls._from_storable_format(q, row["question_data"]["maximum"])
+        q.type = DateQuestionType(row["type"])
+        q.minimum = await cls._from_storable_format(q, row["minimum"])
+        q.maximum = await cls._from_storable_format(q, row["maximum"])
         return q
 
-    async def delete(self) -> None:
-        sql = """DELETE FROM surveys.questions WHERE id=$1;"""
-        await db.execute(sql, self._id)
+    @db.transactional
+    async def save_response(self, conn: Connection, response_id: int) -> int:
+        resp = await super().save_response(conn=conn, response_id=response_id)
+        sql = """INSERT INTO surveys.question_response_datetime (response, timestamp) VALUES ($1, $2);"""
+        await conn.execute(sql, resp, self._get_storable_format(self.value))
+        return resp
 
-    async def save_response(self, conn: Connection, encrypted_user_id: str, active_id: int, response_id: int) -> None:
-        sql = """INSERT INTO surveys.question_response (response, question, response_data) VALUES ($1, $2, $3);"""
-        await conn.execute(sql, response_id, self._id, await self._create_response_data())
-
-    async def view_response(self, response: dict) -> str:
+    async def view_response(self, response: Record) -> str:
         return await self._get_discord_format(await self._from_storable_format(response["timestamp"]))
 
     def get_input_text(self) -> discord.ui.InputText:

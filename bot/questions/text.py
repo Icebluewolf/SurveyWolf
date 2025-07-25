@@ -2,13 +2,12 @@ import discord
 from asyncpg import Record, Connection
 
 from questions.input_text_response import InputTextResponse
-from questions.survey_question import QuestionType, GetBaseInfo
+from questions.survey_question import GetBaseInfo
 
 from utils.database import database as db
 
 
 class TextQuestion(InputTextResponse):
-    QUESTION_TYPE = QuestionType.TEXT
 
     def __init__(self, title: str, survey_id: int):
         # This constructor is meant for creating new questions
@@ -31,58 +30,15 @@ class TextQuestion(InputTextResponse):
     async def short_display(self) -> str:
         return f"{self.title} {self.description}"
 
-    async def _create_data(self) -> dict:
-        return {
-            "min_length": self.min_length,
-            "max_length": self.max_length,
-        }
+    async def save(self, conn: Connection) -> None:
+        await super().save(conn=conn)
 
-    async def _create_response_data(self) -> dict:
-        return {
-            "text": self.value,
-        }
-
-    async def save(self, position: int, conn: Connection = None) -> None:
-        # Setting conn to be either a Connection or my Database object is probably bad practice
-        if conn is None:
-            conn = db
         if self._id:
-            base_sql = """
-            UPDATE surveys.questions 
-            SET text=$2, position=$3, survey_id=$4, required=$5, description=$6, type=$7, question_data=$8
-            WHERE id=$1;
-            """
-            await conn.execute(
-                base_sql,
-                self._id,
-                self.title,
-                position,
-                self.template,
-                self.required,
-                self.description,
-                TextQuestion.QUESTION_TYPE.value,
-                await self._create_data(),
-            )
+            sql = """UPDATE surveys.question_text SET min_length=$1, max_length=$2 WHERE id=$3;"""
+            await conn.execute(sql, self.min_length, self.max_length, self._id)
         else:
-            base_sql = """
-            INSERT INTO surveys.questions (text, position, survey_id, required, description, type, question_data) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id;
-            """
-            record = await conn.fetch(
-                base_sql,
-                self.title,
-                position,
-                self.template,
-                self.required,
-                self.description,
-                TextQuestion.QUESTION_TYPE.value,
-                await self._create_data(),
-            )
-            self._id = record[0]["id"]
-
-    async def delete(self) -> None:
-        sql = """DELETE FROM surveys.questions WHERE id=$1;"""
-        await db.execute(sql, self._id)
+            sql = """INSERT INTO surveys.question_text (min_length, max_length, id) VALUES ($1, $2, $3);"""
+            await conn.execute(sql, self.min_length, self.max_length, self._id)
 
     async def set_up(self, interaction: discord.Interaction) -> discord.Interaction:
         m = GetTextQuestionInfo(self)
@@ -90,26 +46,30 @@ class TextQuestion(InputTextResponse):
         await m.wait()
         return m.interaction
 
-    # @classmethod
-    # async def fetch(cls, id: int):
-    #     sql = """
-    #     SELECT text, questions.id, position, survey_id, required, description, type, min_length, max_length
-    #     FROM surveys.questions INNER JOIN surveys.text_question ON questions.id = text_question.base_id
-    #     WHERE questions.id=$1;"""
-    #     return await TextQuestion.load(await db.fetch_one(sql, id))
+    @classmethod
+    async def fetch(cls, id: int):
+        sql = """
+                SELECT * FROM surveys.questions 
+                JOIN surveys.question_text qd ON questions.id = qd.id 
+                WHERE questions.id=$1
+            """
+        return await cls.load(await db.fetch_one(sql, id))
 
-    async def save_response(self, conn: Connection, encrypted_user_id: str, active_id: int, response_id: int):
-        sql = """INSERT INTO surveys.question_response (response, question, response_data) VALUES ($1, $2, $3);"""
-        await conn.execute(sql, response_id, self._id, await self._create_response_data())
+    @db.transactional
+    async def save_response(self, conn: Connection, response_id: int) -> int:
+        resp = await super().save_response(conn=conn, response_id=response_id)
+        sql = """INSERT INTO surveys.question_response_text (response, text) VALUES ($1, $2);"""
+        await conn.execute(sql, resp, self.value)
+        return resp
 
     @classmethod
     async def load(cls, row: Record):
         q = await super().load(row)
-        q.min_length = row["question_data"]["min_length"]
-        q.max_length = row["question_data"]["max_length"]
+        q.min_length = row["min_length"]
+        q.max_length = row["max_length"]
         return q
 
-    async def view_response(self, response: dict) -> str:
+    async def view_response(self, response: Record) -> str:
         result = response["text"]
         return result
 

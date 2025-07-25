@@ -121,8 +121,7 @@ class SurveyTemplate:
 
             for n, question in enumerate(self.questions):
                 question.template = self._id
-                question.position = n
-                await question.save(n, conn)
+                await question.save(conn=conn)
 
     async def delete(self) -> None:
         sql = "DELETE FROM surveys.template WHERE guild_id=$1 AND id=$2;"

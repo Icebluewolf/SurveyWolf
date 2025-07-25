@@ -4,10 +4,10 @@ import discord
 from discord import slash_command, Option
 
 from forms.survey.template import SurveyTemplate, title_autocomplete, get_templates
-from questions.datetime_question import DateQuestion
+from questions.datetime import DateQuestion
 from questions.multiple_choice import MultipleChoice
 from questions.survey_question import SurveyQuestion, QuestionType
-from questions.text_question import TextQuestion
+from questions.text import TextQuestion
 from utils import embed_factory as ef
 from utils.timers import Timer
 from utils.database import database as db
