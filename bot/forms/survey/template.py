@@ -121,6 +121,7 @@ class SurveyTemplate:
 
             for n, question in enumerate(self.questions):
                 question.template = self._id
+                question.position = n
                 await question.save(conn=conn)
 
     async def delete(self) -> None:
