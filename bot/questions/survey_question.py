@@ -7,9 +7,7 @@ from enum import Enum
 from utils import embed_factory as ef
 from utils.database import database as db
 
-from questions.text import TextQuestion
-from questions.multiple_choice import MultipleChoice
-from questions.datetime import DateQuestion
+# Lazy Imports Are Being Used In `question_maps`
 
 
 class SurveyQuestion(ABC):
@@ -98,7 +96,7 @@ class SurveyQuestion(ABC):
         else:
             sql = """INSERT INTO surveys.questions (text, position, survey_id, required, description, type) 
             VALUES ($1, $2, $3, $4, $5, $6) RETURNING id;"""
-            record = await conn.fetch(sql, self.title, self.position, self.template, self.required, self.description, cls_question[self.__class__])
+            record = await conn.fetch(sql, self.title, self.position, self.template, self.required, self.description, question_maps()[1][self.__class__].value)
             self._id = record[0]["id"]
 
     @db.transactional
@@ -202,12 +200,18 @@ class QuestionType(Enum):
     DATETIME = 2
 
 
-question_cls: dict[QuestionType, type[SurveyQuestion]] = {
-        QuestionType.TEXT: TextQuestion,
-        QuestionType.MULTIPLE_CHOICE: MultipleChoice,
-        QuestionType.DATETIME: DateQuestion,
-    }
-cls_question: dict[type[SurveyQuestion], QuestionType] = {v: k for k, v in question_cls.items()}
+def question_maps():
+    from questions.text import TextQuestion
+    from questions.multiple_choice import MultipleChoice
+    from questions.datetime import DateQuestion
+    question_cls: dict[QuestionType, type[SurveyQuestion]] = {
+            QuestionType.TEXT: TextQuestion,
+            QuestionType.MULTIPLE_CHOICE: MultipleChoice,
+            QuestionType.DATETIME: DateQuestion,
+        }
+    cls_question: dict[type[SurveyQuestion], QuestionType] = {v: k for k, v in question_cls.items()}
+    return question_cls, cls_question
+
 
 async def from_db(row: Record) -> SurveyQuestion:
-    return await question_cls[QuestionType(row["type"])].fetch(row["id"])
+    return await question_maps()[0][QuestionType(row["type"])].fetch(row["id"])

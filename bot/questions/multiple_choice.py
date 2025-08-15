@@ -2,7 +2,7 @@ import discord
 from asyncpg import Connection, Record
 from discord import Interaction
 
-from questions.survey_question import SurveyQuestion, QuestionType, GetBaseInfo
+from questions.survey_question import SurveyQuestion, GetBaseInfo
 from utils.database import database as db
 from utils.embed_factory import general
 
