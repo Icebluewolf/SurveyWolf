@@ -87,16 +87,18 @@ class MultipleChoice(SurveyQuestion):
         return result
 
     @db.transactional
-    async def save_response(self, conn: Connection, response_id: int) -> int:
+    async def save_response(self, response_id: int, *, conn: Connection) -> int:
         resp = await super().save_response(conn=conn, response_id=response_id)
         sql = """INSERT INTO surveys.question_response_multiple_choice (response, selected) VALUES ($1, $2);"""
-        await conn.execute(sql, resp, self.selected)
+        await conn.execute(sql, resp, [x.id for x in self.selected])
         return resp
 
-    async def save(self, position: int, conn: Connection = None) -> None:
+    @db.transactional
+    async def save(self, *, conn: Connection = None) -> None:
+        update = bool(self._id)
         await super().save(conn=conn)
 
-        if self._id:
+        if update:
             sql = """UPDATE surveys.question_multiple_choice SET min_selects=$1, max_selects=$2, options=$3 WHERE id=$4;"""
             await conn.execute(sql, self.min_selects, self.max_selects, [x.id for x in self.options], self._id)
         else:

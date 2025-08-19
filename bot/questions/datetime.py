@@ -148,15 +148,17 @@ class DateQuestion(InputTextResponse):
         return obj
 
     @db.transactional
-    async def save(self, conn: Connection) -> None:
+    async def save(self, *, conn: Connection) -> None:
+        update = bool(self._id)
         await super().save(conn=conn)
-        if self._id:
+
+        if update:
             sql = """UPDATE surveys.question_datetime SET type=$1, minimum=$2, maximum=$3 WHERE id=$4;"""
-            await conn.execute(sql, self.type, await self._get_storable_format(self.minimum),
+            await conn.execute(sql, self.type.value, await self._get_storable_format(self.minimum),
                                await self._get_storable_format(self.maximum), self._id)
         else:
             sql = """INSERT INTO surveys.question_datetime (type, minimum, maximum, id) VALUES ($1, $2, $3, $4)"""
-            await conn.execute(sql, self.type, await self._get_storable_format(self.minimum),
+            await conn.execute(sql, self.type.value, await self._get_storable_format(self.minimum),
                                await self._get_storable_format(self.maximum), self._id)
 
     @classmethod
@@ -168,7 +170,7 @@ class DateQuestion(InputTextResponse):
         return q
 
     @db.transactional
-    async def save_response(self, conn: Connection, response_id: int) -> int:
+    async def save_response(self, response_id: int, *, conn: Connection) -> int:
         resp = await super().save_response(conn=conn, response_id=response_id)
         sql = """INSERT INTO surveys.question_response_datetime (response, timestamp) VALUES ($1, $2);"""
         await conn.execute(sql, resp, self._get_storable_format(self.value))

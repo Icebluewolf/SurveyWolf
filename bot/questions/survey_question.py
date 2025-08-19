@@ -85,7 +85,7 @@ class SurveyQuestion(ABC):
 
     @abstractmethod
     @db.transactional
-    async def save(self, conn: Connection) -> None:
+    async def save(self, *, conn: Connection) -> None:
         """
         Save The Question To The Database
         :param conn: Connection to use. Useful for batching requests
@@ -100,7 +100,7 @@ class SurveyQuestion(ABC):
             self._id = record[0]["id"]
 
     @db.transactional
-    async def delete(self, conn: Connection) -> None:
+    async def delete(self, *, conn: Connection) -> None:
         """
         Deletes The Question From The Database
         The deletion should cascade to the question specific tables so this method does not need to be overridden
@@ -112,7 +112,8 @@ class SurveyQuestion(ABC):
         await conn.execute(sql, self._id)
 
     @abstractmethod
-    async def save_response(self, conn: Connection, response_id: int) -> int:
+    @db.transactional
+    async def save_response(self, response_id: int, *, conn: Connection) -> int:
         """
         Saves The Users Response To This Question To The Database
         :param conn: The Database connection to use. Useful for batching requests

@@ -30,10 +30,12 @@ class TextQuestion(InputTextResponse):
     async def short_display(self) -> str:
         return f"{self.title} {self.description}"
 
-    async def save(self, conn: Connection) -> None:
+    @db.transactional
+    async def save(self, *, conn: Connection) -> None:
+        update = bool(self._id)
         await super().save(conn=conn)
 
-        if self._id:
+        if update:
             sql = """UPDATE surveys.question_text SET min_length=$1, max_length=$2 WHERE id=$3;"""
             await conn.execute(sql, self.min_length, self.max_length, self._id)
         else:
@@ -56,7 +58,7 @@ class TextQuestion(InputTextResponse):
         return await cls.load(await db.fetch_one(sql, id))
 
     @db.transactional
-    async def save_response(self, conn: Connection, response_id: int) -> int:
+    async def save_response(self, response_id: int, *, conn: Connection) -> int:
         resp = await super().save_response(conn=conn, response_id=response_id)
         sql = """INSERT INTO surveys.question_response_text (response, text) VALUES ($1, $2);"""
         await conn.execute(sql, resp, self.value)
