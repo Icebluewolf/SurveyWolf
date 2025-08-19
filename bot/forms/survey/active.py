@@ -18,11 +18,11 @@ class ActiveSurvey:
     def __init__(self, template: int | SurveyTemplate, end: datetime | timedelta | None = None):
         self.template: int | SurveyTemplate = template
         if end is None:
-            self.end = datetime.now() + template.duration
+            self.end = datetime.now(tz=UTC) + template.duration
         elif isinstance(end, datetime):
             self.end = end.replace(tzinfo=UTC)
         elif isinstance(end, timedelta):
-            self.end = datetime.now() + end
+            self.end = datetime.now(tz=UTC) + end
         self._channel_id = None
         self._message_id = None
         self._id = None
@@ -95,7 +95,7 @@ class SurveyButton(discord.ui.Button):
         template = self.view.survey.template
 
         # Check If Time Is Up On The Survey
-        if self.view.survey.end and self.view.survey.end < datetime.now():
+        if self.view.survey.end and self.view.survey.end < datetime.now(tz=UTC):
             await self.view.end_survey()
             return await interaction.respond(embed=await ef.fail("Sorry! This Survey Has Ended"), ephemeral=True)
 
@@ -179,7 +179,7 @@ class DataSharingConsent(discord.ui.View):
             "INSERT INTO surveys.data_sharing_consent (user_id, guild_id, timestamp, version_id) "
             "VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, guild_id) DO UPDATE SET version_id = excluded.version_id;"
         )
-        now = datetime.now(UTC)
+        now = datetime.now(tz=UTC)
         await db.execute(
             sql, str(interaction.user.id), str(interaction.guild_id), now.replace(tzinfo=None), CONSENT_VERSION
         )

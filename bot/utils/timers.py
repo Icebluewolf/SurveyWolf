@@ -1,6 +1,6 @@
 import asyncio
 from asyncio import sleep
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from time_str import IntervalConverter
 from collections.abc import Callable
 
@@ -15,7 +15,7 @@ class Timer:
         :param args: The arguments to pass to the callback function.
         :param kwargs: The keyword arguments to pass to the callback function.
         """
-        self.start_time = datetime.now()
+        self.start_time = datetime.now(tz=UTC)
         if isinstance(time, str):
             duration = self.str_time(time)
         elif isinstance(time, timedelta):
