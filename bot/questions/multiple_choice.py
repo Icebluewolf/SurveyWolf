@@ -22,10 +22,17 @@ class MultipleChoiceOption:
         return {"text": self.text, "id": self.id}
 
     @classmethod
-    async def load(cls, data: dict):
+    async def load(cls, data: Record):
         new_option = cls(data["text"])
-        new_option.id = data.get("id")
+        new_option.id = data["position"]
         return new_option
+
+    @db.transactional
+    async def save(self, question_id: int, *, conn: Connection):
+        sql = """
+            INSERT INTO surveys.question_multiple_choice_option (text, position, question_id) VALUES ($1, $2, $3);
+        """
+        await conn.execute(sql, self.text, self.id, question_id)
 
 
 class MultipleChoice(SurveyQuestion):
@@ -48,11 +55,15 @@ class MultipleChoice(SurveyQuestion):
     @classmethod
     async def fetch(cls, id: int):
         sql = """
-                SELECT * FROM surveys.questions 
-                JOIN surveys.question_multiple_choice qd ON questions.id = qd.id 
-                WHERE questions.id=$1
+            SELECT * FROM surveys.questions 
+            JOIN surveys.question_multiple_choice qd ON questions.id = qd.id 
+            WHERE questions.id=$1
             """
-        return await cls.load(await db.fetch_one(sql, id))
+        q = await db.fetch_one(sql, id)
+        sql = """
+            SELECT text, position FROM surveys.question_multiple_choice_option WHERE question_id=$1;
+        """
+        return await cls.load(q, await db.fetch(sql, id))
 
     async def send_question(self, interaction: discord.Interaction) -> discord.Interaction:
         v = ResponseView(self)
@@ -105,22 +116,30 @@ class MultipleChoice(SurveyQuestion):
             sql = """INSERT INTO surveys.question_multiple_choice (min_selects, max_selects, options, id) VALUES ($1, $2, $3, $4);"""
             await conn.execute(sql, self.min_selects, self.max_selects, [x.id for x in self.options], self._id)
 
+        # Clear The Old Choices And Save Again
+        sql = """DELETE FROM surveys.question_multiple_choice_option WHERE question_id=$1;"""
+        await conn.execute(sql, self._id)
+        for x in self.options:
+            await x.save(self._id, conn=conn)
+
     async def set_up(self, interaction: discord.Interaction) -> discord.Interaction:
         m = GetMultipleChoiceQuestionInfo(self)
         await interaction.response.send_modal(m)
         await m.wait()
         interaction = m.interaction
         v = AddChoices(self)
-        await interaction.response.edit_message(embed=await general("Options"), view=v)
+        await interaction.response.edit_message(embed=await v._create_embed(), view=v)
         if not await v.wait():
             return v.interaction
 
     @classmethod
-    async def load(cls, row: Record):
+    async def load(cls, row: Record, options: list[Record] = None):
+        if options is None:
+            options = []
         q: cls = await super().load(row)
         q.min_selects = row["min_selects"]
         q.max_selects = row["max_selects"]
-        q.options = [await MultipleChoiceOption.load(x) for x in row["options"]]
+        q.options = [await MultipleChoiceOption.load(x) for x in options]
         return q
 
 

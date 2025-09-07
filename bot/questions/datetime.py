@@ -173,7 +173,7 @@ class DateQuestion(InputTextResponse):
     async def save_response(self, response_id: int, *, conn: Connection) -> int:
         resp = await super().save_response(conn=conn, response_id=response_id)
         sql = """INSERT INTO surveys.question_response_datetime (response, timestamp) VALUES ($1, $2);"""
-        await conn.execute(sql, resp, self._get_storable_format(self.value))
+        await conn.execute(sql, resp, await self._get_storable_format(self.value))
         return resp
 
     async def view_response(self, response: Record) -> str:
