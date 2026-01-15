@@ -4,7 +4,7 @@ from asyncpg import Record, Connection
 from abc import ABC, abstractmethod
 from enum import Enum
 
-from utils import embed_factory as ef
+from utils import component_factory as cf
 from utils.database import database as db
 
 # Use Of Lazy Imports In The `from_db` Function
@@ -77,10 +77,10 @@ class SurveyQuestion(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def display(self) -> discord.Embed:
+    async def display(self) -> discord.ui.Container:
         """
-        An Embed That Displays All The Details Of The Question
-        :return: The created Embed
+        A Container That Displays All The Details Of The Question
+        :return: The created Container
         """
         raise NotImplementedError
 
@@ -202,7 +202,7 @@ class GetBaseInfo(discord.ui.Modal):
         errors = await self.process()
         if errors:
             await interaction.followup.send(
-                embed=await ef.fail("\n".join(errors)),
+                view=discord.ui.View(await cf.fail("\n".join(errors)), timeout=0),
                 ephemeral=True,
             )
 

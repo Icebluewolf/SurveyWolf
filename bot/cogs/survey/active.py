@@ -1,9 +1,10 @@
 from discord import Cog, slash_command, Option, ApplicationContext
+from discord.ui import View
 
 from forms.survey.active import ActiveSurvey, load_active_surveys
 from forms.survey.template import title_autocomplete, get_templates
 from utils.timers import Timer
-from utils import embed_factory as ef
+from utils import component_factory as cf
 
 
 class ActiveSurveyCommands(Cog):
@@ -24,11 +25,11 @@ class ActiveSurveyCommands(Cog):
             duration_override = Timer.str_time(duration_override)
             if duration_override.total_seconds() == 0:
                 return await ctx.respond(
-                    embed=await ef.fail(
+                    view=View(await cf.fail(
                         """You Entered A Value For `Duration Override` But It Was Not Valid. 
                         You Should Write The Time In This Format: `2 hours and 15 minutes`.
                         Abbreviations Like `min` Or `m` For Minutes Are Also Allowed."""
-                    )
+                    ), timeout=0)
                 )
 
         templates = await get_templates(ctx.guild_id)
@@ -36,17 +37,17 @@ class ActiveSurveyCommands(Cog):
             if name == str(template._id) or name == template.title:
                 break
         else:
-            return await ctx.respond(embed=await ef.fail(f"No Survey Named `{name}` Found"), ephemeral=True)
+            return await ctx.respond(view=View(await cf.fail(f"No Survey Named `{name}` Found"), timeout=0), ephemeral=True)
         if template.duration is None and duration_override is None:
             return await ctx.respond(
-                embed=await ef.fail(
+                view=View(await cf.fail(
                     "You Must Set A `duration_override` If The Survey Does Not Have A Default Duration"
-                ),
+                ), timeout=0),
                 ephemeral=True,
             )
         survey = ActiveSurvey(template, duration_override)
         await survey.save()
-        await ctx.interaction.respond(embed=await ef.success("The Survey Was Started"), ephemeral=True)
+        await ctx.interaction.respond(view=View(await cf.success("The Survey Was Started"), timeout=0), ephemeral=True)
         await survey.send(ctx.interaction, message)
 
     @Cog.listener(once=True)

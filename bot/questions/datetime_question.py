@@ -10,7 +10,6 @@ from dateutil.parser import parse as datetime_parser, ParserError, UnknownTimezo
 
 from questions.input_text_response import InputTextResponse, GetResponse
 from questions.survey_question import QuestionType, GetBaseInfo
-from utils.embed_factory import general
 from utils.database import database as db
 from utils.timers import Timer
 
@@ -55,7 +54,9 @@ class DateQuestion(InputTextResponse):
         await m.wait()
         interaction = m.interaction
         v = Settings(self)
-        await interaction.response.edit_message(view=v, embed=await self.display())
+        # TODO: Make it on top
+        v.add_item(await self.display(), 0)
+        await interaction.response.edit_message(view=v)
         if not await v.wait():
             return v.interaction
 
@@ -65,15 +66,19 @@ class DateQuestion(InputTextResponse):
         await modal.wait()
         return modal.interaction
 
-    async def display(self) -> discord.Embed:
-        e = await general(title=self.title, message=self.description + "\n\nFormat: " + self.type.human_readable())
-
-        e.description += f"\nMinimum: {await self._get_discord_format(self.minimum)}"
-        e.description += f"\nMaximum: {await self._get_discord_format(self.maximum)}"
+    async def display(self) -> discord.ui.Container:
+        # e = await general(title=self.title, message=self.description + "\n\nFormat: " + self.type.human_readable())
+        #
+        # e.description += f"\nMinimum: {await self._get_discord_format(self.minimum)}"
+        # e.description += f"\nMaximum: {await self._get_discord_format(self.maximum)}"
+        text = f"### {self.title}\n{self.description}\nFormat: {self.type.human_readable()}"
+        text += f"\nMinimum: {await self._get_discord_format(self.minimum)}"
+        text += f"\nMaximum: {await self._get_discord_format(self.maximum)}"
+        e = discord.ui.Container(discord.ui.TextDisplay(text))
         return e
 
     async def short_display(self) -> str:
-        return f"{self.title} {self.description}\n\nFormat: {self.type.human_readable()}"
+        return f"{self.title} {self.description}"
 
     async def _get_storable_format(
         self, obj: datetime.datetime | datetime.time | datetime.timedelta | datetime.date
@@ -289,7 +294,12 @@ class Settings(discord.ui.View):
         if self.selected is not None:
             self.set_min_max.disabled = False
             self.finish.disabled = False
-        await interaction.response.edit_message(view=self, embed=await self.question.display())
+        if found := self.get_item(100):
+            self.remove_item(found)
+        c = await self.question.display()
+        c.id = 100
+        self.add_item(c)
+        await interaction.response.edit_message(view=self)
 
     @discord.ui.button(label="Set Min/Max", disabled=True, style=discord.ButtonStyle.gray, row=2)
     async def set_min_max(self, button, interaction: discord.Interaction):
@@ -409,11 +419,11 @@ class MinMaxModal(discord.ui.Modal):
 
         await self.view.update(interaction)
         if errors:
-            em = discord.Embed(
-                title="Some Settings Failed",
-                description="Below Are The Errors Of The Settings That Were Not Inputted Correctly. If "
-                "There Is Not An Error The Setting Was Successfully Set.",
-                color=0xD33033,
-            )
-            em.add_field(name="Errors", value="\n".join(errors))
-            await interaction.followup.send(embed=em, ephemeral=True)
+            v = discord.ui.View(discord.ui.Container(
+                discord.ui.TextDisplay(
+                    "## Some Settings Failed\n"
+                    "Below Are The Errors Of The Settings That Were Not Inputted Correctly. If There Is Not An Error "
+                    "The Setting Was Successfully Set."
+                ), discord.ui.TextDisplay(f"### Errors\n{"\n".join(errors)}"),
+                color=0xD33033))
+            await interaction.followup.send(view=v, ephemeral=True)

@@ -8,7 +8,7 @@ from questions.datetime_question import DateQuestion
 from questions.multiple_choice import MultipleChoice
 from questions.survey_question import SurveyQuestion, QuestionType
 from questions.text_question import TextQuestion
-from utils import embed_factory as ef
+from utils import component_factory as cf
 from utils.timers import Timer
 from utils.database import database as db
 
@@ -30,34 +30,34 @@ class Wizard(discord.ui.View):
 
         self._edit_question_interaction: discord.Interaction | None = None
 
-    async def _create_embed(self) -> discord.Embed:
-        e = discord.Embed(
-            title="Survey Creation Wizard",
-            description="Edit the settings for your survey. Any option that is not filled will default to the "
-            "displayed value or none.",
-            fields=[
-                discord.EmbedField(name="Survey Name", value=self.template.title),
-                discord.EmbedField(
-                    name="User Settings",
-                    value=f"""
-                    **[WIP]** Anonymous: {self.template.anonymous.name.capitalize()}
-                    Number Of Entries Per Person: {self.template.entries_per_user}
-                    **[WIP]** Edit Responses: {self.template.editable_responses}
-                    """,
-                ),
-                discord.EmbedField(
-                    name="Survey Settings",
-                    value=f"""
-                    Default Time Limit: {self.template.duration}
-                    Total Number Of Entries: {self.template.max_entries}
-                    """,
-                ),
-            ],
-        )
-        return e
+        self.add_item(self._create_container())
+
+    def _create_container(self) -> discord.ui.Container:
+        c = discord.ui.Container(discord.ui.TextDisplay(
+            "### Survey Creation Wizard\n"
+            "Edit the settings for your survey. Any option that is not filled will default to the "
+            "displayed value or none."
+        ))
+        c.add_separator()
+        c.add_text("### Survey Name\n" + self.template.title)
+        c.add_text("### User Settings\n"
+                   f"**[WIP]** Anonymous: {self.template.anonymous.name.capitalize()}\n"
+                   f"Number Of Entries Per Person: {self.template.entries_per_user}\n"
+                   f"**[WIP]** Edit Responses: {self.template.editable_responses}")
+        c.add_text("### Survey Settings\n"
+                   f"Default Time Limit: {self.template.duration}\n"
+                   f"Total Number Of Entries: {self.template.max_entries}")
+        return c
 
     async def update_message(self, interaction: discord.Interaction) -> None:
-        await interaction.response.edit_message(view=self, embed=await self._create_embed())
+        # TODO: Make the container on top
+        c = self._create_container()
+        c._rendered_row = 0
+        c._view = self
+        if hasattr(c, "items"):
+            c.view = self
+        self.children[0] = c
+        await interaction.response.edit_message(view=self)
 
     @discord.ui.button(label="Edit Questions", style=discord.ButtonStyle.primary)
     async def edit_questions(self, button, interaction):
@@ -69,9 +69,9 @@ class Wizard(discord.ui.View):
         except discord.errors.NotFound:
             pass
 
+        await editor.update_question_container()
         self._edit_question_interaction = await interaction.response.send_message(
             view=editor,
-            embed=await editor.create_question_embed(),
         )
 
     @discord.ui.button(
@@ -102,7 +102,7 @@ class Wizard(discord.ui.View):
     async def save(self, button, interaction):
         if not self.template.questions:
             return await interaction.response.send_message(
-                embed=await ef.fail("Please Set At Least One Question"), ephemeral=True
+                view=discord.ui.View(await cf.fail("Please Set At Least One Question"), timeout=0), ephemeral=True
             )
 
         await interaction.response.defer()
@@ -110,9 +110,10 @@ class Wizard(discord.ui.View):
 
         self.disable_all_items()
         self.stop()
-        await interaction.edit_original_response(
-            view=self, embeds=[await ef.general("The Survey Was Saved"), await self._create_embed()]
-        )
+        # TODO: Make Containers Above The Rest
+        self.add_item(await cf.general("The Survey Was Saved"), 0)
+        self.add_item(await self._create_container(), 1)
+        await interaction.edit_original_response(view=self)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id == self.user_id:
@@ -120,7 +121,8 @@ class Wizard(discord.ui.View):
 
     async def on_check_failure(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_message(
-            embed=await ef.fail("You Did Not Start This Wizard. Use `/create` To Get Started"),
+            view=discord.ui.View(await cf.fail("You Did Not Start This Wizard. Use `/create` To Get Started"),
+                                 timeout=0),
             ephemeral=True,
         )
 
@@ -130,11 +132,10 @@ class Wizard(discord.ui.View):
             await self.template.save()
             message += "\nSome Of The Information Was Saved. To Continue Editing Use </edit:1196819300216999987>"
         await self.message.edit(
-            view=None,
-            embeds=[
-                await self._create_embed(),
-                await ef.general("Creation Timed Out", message),
-            ],
+            view=discord.ui.View(
+                await self._create_container(),
+                await cf.general("Creation Timed Out", message),
+            ),
         )
 
 
@@ -218,14 +219,14 @@ class SetSettings(discord.ui.Modal):
                 )
         await self.wiz.update_message(interaction)
         if errors:
-            em = discord.Embed(
-                title="Some Settings Failed",
-                description="Below Are The Errors Of The Settings That Were Not Inputted Correctly. If "
-                "There Is Not An Error The Setting Was Successfully Set.",
-                color=0xD33033,
-            )
-            em.add_field(name="Errors", value="\n".join(errors))
-            await interaction.followup.send(embed=em)
+            v = discord.ui.View(discord.ui.Container(
+                discord.ui.TextDisplay(
+                    "## Some Settings Failed\n"
+                    "Below Are The Errors Of The Settings That Were Not Inputted Correctly. If There Is Not An Error "
+                    "The Setting Was Successfully Set."
+                ), discord.ui.TextDisplay(f"### Errors\n{"\n".join(errors)}"),
+                color=0xD33033))
+            await interaction.followup.send(view=v)
 
 
 class EditQuestions(discord.ui.View):
@@ -241,14 +242,20 @@ class EditQuestions(discord.ui.View):
         else:
             self.current_pos: int = -1
 
-    async def create_question_embed(self) -> discord.Embed:
+    async def update_question_container(self) -> None:
+        if found := self.get_item(100):
+            self.remove_item(found)
         if self.current_pos == -1:
-            return await ef.general(
+            c = await cf.general(
                 title="Add A Question Below",
                 message="You Have Not Created A Question Yet. Please Use The Dropdown Below To Create One",
             )
         else:
-            return await self.wiz.template.questions[self.current_pos].display()
+            c = await self.wiz.template.questions[self.current_pos].display()
+        c.id = 100
+        # TODO: Add On top
+        self.add_item(c, 0)
+
 
     async def update_button_state(self):
         for item in self.children:
@@ -284,18 +291,21 @@ class EditQuestions(discord.ui.View):
     @discord.ui.button(emoji="⬆", label="Move Up", style=discord.ButtonStyle.primary, row=1, disabled=True)
     async def move_up(self, button: discord.Button, interaction: discord.Interaction):
         await self.move(-1)
-        await interaction.response.edit_message(view=self, embed=await self.create_question_embed())
+        await self.update_question_container()
+        await interaction.response.edit_message(view=self)
 
     @discord.ui.button(emoji="🔃", label="Edit", style=discord.ButtonStyle.primary, row=1, disabled=True)
     async def edit_question(self, button: discord.Button, interaction: discord.Interaction):
         interaction = await self.wiz.template.questions[self.current_pos].set_up(interaction)
         self.question_selector.update(self.wiz.template.questions, default=self.current_pos)
-        await interaction.response.edit_message(view=self, embed=await self.create_question_embed())
+        await self.update_question_container()
+        await interaction.response.edit_message(view=self)
 
     @discord.ui.button(emoji="⬇", label="Move Down", style=discord.ButtonStyle.primary, row=1, disabled=True)
     async def move_down(self, button: discord.Button, interaction: discord.Interaction):
         await self.move(1)
-        await interaction.response.edit_message(view=self, embed=await self.create_question_embed())
+        await self.update_question_container()
+        await interaction.response.edit_message(view=self)
 
     @discord.ui.button(label="Delete Question", style=discord.ButtonStyle.red, emoji="➖", row=1, disabled=True)
     async def delete(self, button: discord.Button, interaction: discord.Interaction):
@@ -307,7 +317,8 @@ class EditQuestions(discord.ui.View):
             self.current_pos = 0
         self.question_selector.update(self.wiz.template.questions, self.current_pos)
         await self.update_button_state()
-        await interaction.response.edit_message(view=self, embed=await self.create_question_embed())
+        await self.update_question_container()
+        await interaction.response.edit_message(view=self)
 
     options = [
         discord.SelectOption(
@@ -334,7 +345,7 @@ class EditQuestions(discord.ui.View):
     async def add_question(self, select: discord.ui.Select, interaction: discord.Interaction):
         if len(self.wiz.template.questions) >= 25:
             return await interaction.response.send_message(
-                embed=await ef.fail("You Cannot Have More Then 25 Questions."),
+                view=discord.ui.View(await cf.fail("You Cannot Have More Then 25 Questions."), timeout=0),
                 ephemeral=True,
             )
         match int(select.values[0]):
@@ -352,8 +363,8 @@ class EditQuestions(discord.ui.View):
         self.current_pos = self.current_pos + 1
         self.question_selector.update(self.wiz.template.questions, default=self.current_pos)
         await self.update_button_state()
-
-        await interaction.response.edit_message(view=self, embed=await self.create_question_embed())
+        await self.update_question_container()
+        await interaction.response.edit_message(view=self)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id == self.wiz.user_id:
@@ -376,7 +387,6 @@ class QuestionSelector(discord.ui.Select):
         self.update(questions)
 
     if TYPE_CHECKING:
-
         @property
         def view(self) -> EditQuestions: ...
 
@@ -393,7 +403,8 @@ class QuestionSelector(discord.ui.Select):
             self.view.current_pos = int(self.values[0])
             self.update(self.view.wiz.template.questions, self.view.current_pos)
             await self.view.update_button_state()
-            await interaction.response.edit_message(view=self.view, embed=await self.view.create_question_embed())
+            await self.view.update_question_container()
+            await interaction.response.edit_message(view=self.view)
 
 
 class DeleteSurveyConf(discord.ui.View):
@@ -404,7 +415,8 @@ class DeleteSurveyConf(discord.ui.View):
     @discord.ui.button(label="Cancel", emoji="❌", style=discord.ButtonStyle.green)
     async def cancel(self, button, interaction: discord.Interaction):
         await interaction.response.edit_message(
-            embed=await ef.success(f"The **{self.template.title}** Survey Was **NOT** Deleted"), view=None
+            view=discord.ui.View(await cf.success(f"The **{self.template.title}** Survey Was **NOT** Deleted"),
+                                 timeout=0)
         )
         self.stop()
 
@@ -412,7 +424,7 @@ class DeleteSurveyConf(discord.ui.View):
     async def delete_survey_button(self, button, interaction: discord.Interaction):
         await self.template.delete()
         await interaction.response.edit_message(
-            embed=await ef.success(f"The **{self.template.title}** Survey Was Deleted"), view=None
+            view=discord.ui.View(await cf.success(f"The **{self.template.title}** Survey Was Deleted"), timeout=0)
         )
         self.stop()
 
@@ -424,39 +436,42 @@ class CreationCog(discord.Cog):
     @slash_command(description="Opens The Form Creation Wizard")
     @discord.default_permissions(manage_guild=True)
     async def create(
-        self,
-        ctx: discord.ApplicationContext,
-        name: discord.Option(str, description="The Name For This Survey", max_length=64, required=True),
+            self,
+            ctx: discord.ApplicationContext,
+            name: discord.Option(str, description="The Name For This Survey", max_length=64, required=True),
     ):
         # await ctx.defer()
         # Ensure That No Other Survey In The Guild Has The Same Name
         if await SurveyTemplate.check_exists(name, ctx.guild.id):
             return await ctx.respond(
-                embed=await ef.fail("There Is Already A Survey With That Name"),
+                view=discord.ui.View(await cf.fail("There Is Already A Survey With That Name"), timeout=0),
                 ephemeral=True,
             )
 
         view = Wizard(SurveyTemplate(name, ctx.guild.id), user_id=ctx.author.id)
-        await ctx.respond(embed=await view._create_embed(), view=view)
+        # TODO: Make it on top
+        view.add_item(await view._create_container(), 0)
+        await ctx.respond(view=view)
 
     @slash_command(name="delete", description="Delete A Survey")
     @discord.default_permissions(manage_guild=True)
     async def delete_survey(
-        self,
-        ctx: discord.ApplicationContext,
-        name: Option(
-            str,
-            name="survey",
-            description="The Survey To Delete",
-            autocomplete=title_autocomplete,
-        ),
+            self,
+            ctx: discord.ApplicationContext,
+            name: Option(
+                str,
+                name="survey",
+                description="The Survey To Delete",
+                autocomplete=title_autocomplete,
+            ),
     ):
         for template in await get_templates(ctx.guild_id):
             if name == str(template._id) or name == template.title:
                 name = template.title
                 break
         else:
-            return await ctx.respond(embed=await ef.fail(f"No Survey Named `{name}` Found"), ephemeral=True)
+            return await ctx.respond(view=discord.ui.View(await cf.fail(f"No Survey Named `{name}` Found"), timeout=0),
+                                     ephemeral=True)
         sql1 = "SELECT COUNT(*) FROM surveys.questions WHERE survey_id = $1;"
         sql2 = """
         SELECT COUNT(*) FROM surveys.question_response WHERE question IN 
@@ -465,33 +480,38 @@ class CreationCog(discord.Cog):
         message = f"""This Survey Has: 
             `{await db.fetchval(sql1, template._id)}` Questions
             `{await db.fetchval(sql2, template._id)}` Responses"""
+        # TODO: Make The Container Go Above The Button
+        v = DeleteSurveyConf(template)
+        v.add_item(await cf.general(f"Are You Sure You Want To Delete {name}?", message=message), 0)
         await ctx.respond(
-            embed=await ef.general(f"Are You Sure You Want To Delete {name}?", message=message),
-            view=DeleteSurveyConf(template),
+            view=v,
             ephemeral=True,
         )
 
     @slash_command(name="edit", description="Edit And Existing Survey")
     @discord.default_permissions(manage_guild=True)
     async def edit_survey(
-        self,
-        ctx: discord.ApplicationContext,
-        name: Option(
-            str,
-            name="survey",
-            description="The Survey To Edit",
-            autocomplete=title_autocomplete,
-        ),
+            self,
+            ctx: discord.ApplicationContext,
+            name: Option(
+                str,
+                name="survey",
+                description="The Survey To Edit",
+                autocomplete=title_autocomplete,
+            ),
     ):
         templates = await get_templates(ctx.guild_id)
         for template in templates:
             if name == str(template._id) or name == template.title:
                 break
         else:
-            return await ctx.respond(embed=await ef.fail(f"No Survey Named `{name}` Found"), ephemeral=True)
+            return await ctx.respond(view=discord.ui.View(await cf.fail(f"No Survey Named `{name}` Found"), timeout=0),
+                                     ephemeral=True)
         await template.fill_questions()
         wiz = Wizard(template, ctx.author.id)
-        await ctx.respond(embed=await wiz._create_embed(), view=wiz)
+        # TODO: Make container on top
+        wiz.add_item(await wiz._create_container(), 0)
+        await ctx.respond(view=wiz)
 
 
 def setup(bot):

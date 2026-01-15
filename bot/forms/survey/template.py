@@ -10,7 +10,7 @@ from discord import InteractionType
 from questions.input_text_response import InputTextResponse
 from questions.survey_question import SurveyQuestion, from_db
 from utils.database import database as db
-from utils import embed_factory as ef
+from utils import component_factory as cf
 
 
 GUILD_TEMPLATE_CACHE = LRUCache(maxsize=128)
@@ -135,19 +135,16 @@ class SurveyTemplate:
     async def add_question(self, question: SurveyQuestion, pos: int) -> None:
         self.questions.insert(pos, question)
 
-    async def summary(self, end: datetime) -> discord.Embed:
-        e = discord.Embed(title=self.title, description=self.description)
-        e.set_footer(text="Closes")
-        e.timestamp = end
-        e.add_field(
-            name="General Information",
-            value=f"""- Anonymous: {self.anonymous.name.capitalize()}
-- Entries Per User: {self.entries_per_user}
-- Can Edit Responses: {self.editable_responses}
-{f"- Will Close Early If `{self.max_entries}` Entries Are Recorded" if self.max_entries else ""}
-            """,
-        )
-        return e
+    async def summary(self, end: datetime) -> discord.ui.Container:
+        c = discord.ui.Container()
+        c.add_text(f"## {self.title}\n{self.description}\n"
+                   f"### General Information\n"
+                   f"- Anonymous: {self.anonymous.name.capitalize()}\n"
+                   f"- Entries Per User: {self.entries_per_user}\n"
+                   f"- Can Edit Responses: {self.editable_responses}\n"
+                   f"{f"- Will Close Early If `{self.max_entries}` Entries Are Recorded\n" if self.max_entries else ""}"
+                   f"-# Closes {discord.utils.format_dt(end, "R")}")
+        return c
 
     async def send_questions(
         self, interaction: discord.Interaction, encrypted_user_id: str, response_num: int, active_id: int
@@ -181,7 +178,7 @@ class SurveyTemplate:
             response_id = await conn.fetchval(sql, encrypted_user_id, response_num, active_id, self._id)
             for question in self.questions:
                 await question.save_response(conn, encrypted_user_id, active_id, response_id)
-        await interaction.respond(embed=await ef.success("You Have Completed The Survey!"), ephemeral=True)
+        await interaction.respond(view=discord.ui.View(await cf.success("You Have Completed The Survey!"), timeout=0), ephemeral=True)
 
 
 class ModalTransition(discord.ui.View):
@@ -196,8 +193,10 @@ class ModalTransition(discord.ui.View):
         self.stop()
 
     async def send(self):
-        e = await ef.general("To Continue Click The Button Below")
-        await self.old_interaction.respond(ephemeral=True, view=self, embed=e)
+        # TODO: Make Container On Top
+        c = await cf.general("To Continue Click The Button Below")
+        self.add_item(c, 0)
+        await self.old_interaction.respond(ephemeral=True, view=self)
 
 
 async def do_modal_transition(interaction: discord.Interaction) -> discord.Interaction:

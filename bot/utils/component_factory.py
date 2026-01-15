@@ -34,24 +34,43 @@ async def _paginate(em: discord.Embed, value: str | list[tuple]) -> list[str]:
                 pass
 
 
-async def error(traceback: str, **kwargs) -> discord.Embed:
-    e = discord.Embed(color=0xFF0000, title="Error")
-    e.set_footer(text="Report This In The Support Server")
-    e.add_field(inline=False, name="Error:", value=traceback)
-    return e
+async def error(traceback: str) -> discord.ui.Container:
+    c = discord.ui.Container(color=0xFF0000)
+    c.add_text("## Error\n-# Please Report This In The Support Server")
+    c.add_separator()
+    c.add_text(f"```\n{traceback}\n```")
+    return c
 
 
-async def input_error(message: str, errors: list[str]) -> discord.Embed:
-    return discord.Embed(color=0xD33033, title=message, description="- " + "\n- ".join(errors))
+async def input_error(message: str, errors: list[str]) -> discord.ui.Container:
+    c = discord.ui.Container(color=0xD33033)
+    c.add_text(f"## {message}")
+    c.add_separator(divider=False)
+    c.add_text("- " + "\n- ".join(errors))
+    return c
 
 
-async def fail(message: str, **kwargs) -> discord.Embed:
-    return discord.Embed(color=0xD33033, title="You Can Not Do That", description=message)
+async def fail(message: str, **kwargs) -> discord.ui.Container:
+    c = discord.ui.Container(color=0xD33033)
+    c.add_text("## You Can Not Do That")
+    c.add_separator(divider=False)
+    c.add_text(message)
+    return c
 
 
-async def success(message: str = None, **kwargs) -> discord.Embed:
-    return discord.Embed(color=0x00FF00, title="Success!", description=message)
+async def success(message: str = None, **kwargs) -> discord.ui.Container:
+    c = discord.ui.Container(color=0x00FF00)
+    c.add_text("## Success!")
+    c.add_separator(divider=False)
+    if message:
+        c.add_text(message)
+    return c
 
 
-async def general(title: str, message: str = None, **kwargs) -> discord.Embed:
-    return discord.Embed(color=0x30D3D0, title=title, description=message)
+async def general(title: str, message: str = None, **kwargs) -> discord.ui.Container:
+    c = discord.ui.Container(color=0x30D3D0)
+    c.add_text(f"## {title}")
+    c.add_separator(divider=False)
+    if message:
+        c.add_text(message)
+    return c
