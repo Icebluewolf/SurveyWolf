@@ -163,12 +163,22 @@ class DateQuestion(InputTextResponse):
 
         if update:
             sql = """UPDATE surveys.question_datetime SET type=$1, minimum=$2, maximum=$3 WHERE id=$4;"""
-            await conn.execute(sql, self.type.value, await self._get_storable_format(self.minimum),
-                               await self._get_storable_format(self.maximum), self._id)
+            await conn.execute(
+                sql,
+                self.type.value,
+                await self._get_storable_format(self.minimum),
+                await self._get_storable_format(self.maximum),
+                self._id,
+            )
         else:
             sql = """INSERT INTO surveys.question_datetime (type, minimum, maximum, id) VALUES ($1, $2, $3, $4)"""
-            await conn.execute(sql, self.type.value, await self._get_storable_format(self.minimum),
-                               await self._get_storable_format(self.maximum), self._id)
+            await conn.execute(
+                sql,
+                self.type.value,
+                await self._get_storable_format(self.minimum),
+                await self._get_storable_format(self.maximum),
+                self._id,
+            )
 
     @classmethod
     async def load(cls, row: Record):

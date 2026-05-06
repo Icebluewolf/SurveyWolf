@@ -110,7 +110,15 @@ class SurveyQuestion(ABC):
         else:
             sql = """INSERT INTO surveys.questions (text, position, survey_id, required, description, type) 
             VALUES ($1, $2, $3, $4, $5, $6) RETURNING id;"""
-            record = await conn.fetch(sql, self.title, self.position, self.template, self.required, self.description, question_maps()[1][self.__class__].value)
+            record = await conn.fetch(
+                sql,
+                self.title,
+                self.position,
+                self.template,
+                self.required,
+                self.description,
+                question_maps()[1][self.__class__].value,
+            )
             self._id = record[0]["id"]
 
     @db.transactional
@@ -232,11 +240,12 @@ def question_maps():
     from questions.text import TextQuestion
     from questions.multiple_choice import MultipleChoice
     from questions.datetime import DateQuestion
+
     question_cls: dict[QuestionType, type[SurveyQuestion]] = {
-            QuestionType.TEXT: TextQuestion,
-            QuestionType.MULTIPLE_CHOICE: MultipleChoice,
-            QuestionType.DATETIME: DateQuestion,
-        }
+        QuestionType.TEXT: TextQuestion,
+        QuestionType.MULTIPLE_CHOICE: MultipleChoice,
+        QuestionType.DATETIME: DateQuestion,
+    }
     cls_question: dict[type[SurveyQuestion], QuestionType] = {v: k for k, v in question_cls.items()}
     return question_cls, cls_question
 

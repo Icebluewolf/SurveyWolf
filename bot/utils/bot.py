@@ -95,7 +95,7 @@ class SurveyWolf(discord.Bot, ABC):
 
             texts.append(text[:ind])
             # The +1 is to remove the newline character
-            text = text[ind + 1:]
+            text = text[ind + 1 :]
         texts.append(text)
         return texts
 

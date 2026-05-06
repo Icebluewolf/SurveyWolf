@@ -103,7 +103,9 @@ class ResultsCog(discord.Cog):
 
             response_map = defaultdict(list)
             for response in db_responses:
-                response_map[(response["id"], response["response_num"])] = [x for x in responses if x["response"] == response["id"]]
+                response_map[(response["id"], response["response_num"])] = [
+                    x for x in responses if x["response"] == response["id"]
+                ]
 
             question_map = {q._id: q for q in questions}
 
