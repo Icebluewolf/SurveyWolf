@@ -6,10 +6,14 @@ from typing import TYPE_CHECKING, Self
 import discord
 from asyncpg import Connection, Record
 from discord import Interaction
-from dateutil.parser import parse as datetime_parser, ParserError, UnknownTimezoneWarning
+from dateutil.parser import (
+    parse as datetime_parser,
+    ParserError,
+    UnknownTimezoneWarning,
+)
 
 from questions.input_text_response import InputTextResponse, GetResponse
-from questions.survey_question import QuestionType, GetBaseInfo
+from questions.survey_question import GetBaseInfo
 from utils.embed_factory import general
 from utils.database import database as db
 from utils.timers import Timer
@@ -35,7 +39,23 @@ class DateQuestionType(Enum):
 
 
 class DateQuestion(InputTextResponse):
-    QUESTION_TYPE = QuestionType.DATETIME
+    @classmethod
+    async def fetch(cls, id: int):
+        sql = """
+            SELECT * FROM surveys.questions 
+            JOIN surveys.question_datetime qd ON questions.id = qd.id 
+            WHERE questions.id=$1
+        """
+        return await cls.load(await db.fetch_one(sql, id))
+
+    @classmethod
+    @db.transactional
+    async def fetch_by_template(cls, template_id: int, conn: Connection):
+        sql = """
+                SELECT * FROM surveys.questions JOIN surveys.question_datetime qd ON questions.id = qd.id
+                WHERE questions.survey_id=$1;
+            """
+        return [await cls.load(x) for x in await conn.fetch(sql, template_id)]
 
     def __init__(self, title: str, survey_id: int):
         # This constructor is meant for creating new questions
@@ -44,10 +64,28 @@ class DateQuestion(InputTextResponse):
         self.required = True
         self._id = None
 
-        self.value: datetime.datetime | datetime.time | datetime.timedelta | datetime.date | None = None
+        self.value: (
+            datetime.datetime
+            | datetime.time
+            | datetime.timedelta
+            | datetime.date
+            | None
+        ) = None
         self.type: DateQuestionType = DateQuestionType.DATETIME
-        self.minimum: datetime.datetime | datetime.time | datetime.timedelta | datetime.date | None = None
-        self.maximum: datetime.datetime | datetime.time | datetime.timedelta | datetime.date | None = None
+        self.minimum: (
+            datetime.datetime
+            | datetime.time
+            | datetime.timedelta
+            | datetime.date
+            | None
+        ) = None
+        self.maximum: (
+            datetime.datetime
+            | datetime.time
+            | datetime.timedelta
+            | datetime.date
+            | None
+        ) = None
 
     async def set_up(self, interaction: discord.Interaction) -> discord.Interaction:
         m = GetBaseInfo(self, self.title)
@@ -59,24 +97,32 @@ class DateQuestion(InputTextResponse):
         if not await v.wait():
             return v.interaction
 
-    async def send_question(self, interaction: discord.Interaction, group: list[Self] = None) -> discord.Interaction:
+    async def send_question(
+        self, interaction: discord.Interaction, group: list[Self] = None
+    ) -> discord.Interaction:
         modal = GetResponse(group or [self])
         await interaction.response.send_modal(modal)
         await modal.wait()
         return modal.interaction
 
     async def display(self) -> discord.Embed:
-        e = await general(title=self.title, message=self.description + "\n\nFormat: " + self.type.human_readable())
+        e = await general(
+            title=self.title,
+            message=self.description + "\n\nFormat: " + self.type.human_readable(),
+        )
 
         e.description += f"\nMinimum: {await self._get_discord_format(self.minimum)}"
         e.description += f"\nMaximum: {await self._get_discord_format(self.maximum)}"
         return e
 
     async def short_display(self) -> str:
-        return f"{self.title} {self.description}\n\nFormat: {self.type.human_readable()}"
+        return (
+            f"{self.title} {self.description}\n\nFormat: {self.type.human_readable()}"
+        )
 
     async def _get_storable_format(
-        self, obj: datetime.datetime | datetime.time | datetime.timedelta | datetime.date
+        self,
+        obj: datetime.datetime | datetime.time | datetime.timedelta | datetime.date,
     ) -> str:
         if obj is None:
             return ""
@@ -91,17 +137,27 @@ class DateQuestion(InputTextResponse):
         return str(timestamp)
 
     async def _get_discord_format(
-        self, obj: datetime.datetime | datetime.time | datetime.timedelta | datetime.date | None
+        self,
+        obj: datetime.datetime
+        | datetime.time
+        | datetime.timedelta
+        | datetime.date
+        | None,
     ) -> str:
         if obj is None:
             return "None"
         if self.type == DateQuestionType.DATETIME:
             timestamp = discord.utils.format_dt(obj, "F")
         elif self.type == DateQuestionType.DATE:
-            timestamp = discord.utils.format_dt(datetime.datetime.combine(obj, datetime.datetime.min.time()), "D")
+            timestamp = discord.utils.format_dt(
+                datetime.datetime.combine(obj, datetime.datetime.min.time()), "D"
+            )
         elif self.type == DateQuestionType.TIME:
             timestamp = discord.utils.format_dt(
-                datetime.datetime.combine(datetime.datetime.now(datetime.UTC).date(), obj), "T"
+                datetime.datetime.combine(
+                    datetime.datetime.now(datetime.UTC).date(), obj
+                ),
+                "T",
             )
         elif self.type == DateQuestionType.DURATION:
             timestamp = str(obj)
@@ -128,7 +184,9 @@ class DateQuestion(InputTextResponse):
         if timestamp == "":
             return None
         if self.type == DateQuestionType.DATETIME:
-            obj = datetime.datetime.fromtimestamp(float(timestamp), tz=datetime.timezone.utc)
+            obj = datetime.datetime.fromtimestamp(
+                float(timestamp), tz=datetime.timezone.utc
+            )
         elif self.type == DateQuestionType.DATE:
             obj = datetime.date.fromisoformat(timestamp)
         elif self.type == DateQuestionType.TIME:
@@ -139,75 +197,63 @@ class DateQuestion(InputTextResponse):
             raise TypeError("value must be of type DateQuestionType")
         return obj
 
-    async def _create_data(self) -> dict:
-        return {
-            "type": self.type.value,
-            "minimum": await self._get_storable_format(self.minimum),
-            "maximum": await self._get_storable_format(self.maximum),
-        }
+    @db.transactional
+    async def save(self, *, conn: Connection) -> None:
+        update = bool(self._id)
+        await super().save(conn=conn)
 
-    async def _create_response_data(self) -> dict:
-        timestamp = await self._get_storable_format(self.value)
-        return {
-            "timestamp": timestamp,
-        }
-
-    async def save(self, position: int, conn: Connection = None) -> None:
-        # Setting conn to be either a Connection or my Database object is probably bad practice
-        if conn is None:
-            conn = db
-        if self._id:
-            base_sql = """
-                    UPDATE surveys.questions 
-                    SET text=$2, position=$3, survey_id=$4, required=$5, description=$6, type=$7, question_data=$8
-                    WHERE id=$1;
-                    """
+        if update:
+            sql = """UPDATE surveys.question_datetime SET type=$1, minimum=$2, maximum=$3 WHERE id=$4;"""
             await conn.execute(
-                base_sql,
+                sql,
+                self.type.value,
+                await self._get_storable_format(self.minimum),
+                await self._get_storable_format(self.maximum),
                 self._id,
-                self.title,
-                position,
-                self.template,
-                self.required,
-                self.description,
-                DateQuestion.QUESTION_TYPE.value,
-                await self._create_data(),
             )
         else:
-            base_sql = """
-                    INSERT INTO surveys.questions (text, position, survey_id, required, description, type, question_data) 
-                    VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id;
-                    """
-            record = await conn.fetch(
-                base_sql,
-                self.title,
-                position,
-                self.template,
-                self.required,
-                self.description,
-                DateQuestion.QUESTION_TYPE.value,
-                await self._create_data(),
+            sql = """INSERT INTO surveys.question_datetime (type, minimum, maximum, id) VALUES ($1, $2, $3, $4)"""
+            await conn.execute(
+                sql,
+                self.type.value,
+                await self._get_storable_format(self.minimum),
+                await self._get_storable_format(self.maximum),
+                self._id,
             )
-            self._id = record[0]["id"]
 
     @classmethod
     async def load(cls, row: Record):
         q = await super().load(row)
-        q.type = DateQuestionType(row["question_data"]["type"])
-        q.minimum = await cls._from_storable_format(q, row["question_data"]["minimum"])
-        q.maximum = await cls._from_storable_format(q, row["question_data"]["maximum"])
+        q.type = DateQuestionType(row["type"])
+        q.minimum = await cls._from_storable_format(q, row["minimum"])
+        q.maximum = await cls._from_storable_format(q, row["maximum"])
         return q
 
-    async def delete(self) -> None:
-        sql = """DELETE FROM surveys.questions WHERE id=$1;"""
-        await db.execute(sql, self._id)
+    @db.transactional
+    async def save_response(self, response_id: int, *, conn: Connection) -> int:
+        resp = await super().save_response(conn=conn, response_id=response_id)
+        sql = """INSERT INTO surveys.question_response_datetime (response, timestamp) VALUES ($1, $2);"""
+        await conn.execute(sql, resp, await self._get_storable_format(self.value))
+        return resp
 
-    async def save_response(self, conn: Connection, encrypted_user_id: str, active_id: int, response_id: int) -> None:
-        sql = """INSERT INTO surveys.question_response (response, question, response_data) VALUES ($1, $2, $3);"""
-        await conn.execute(sql, response_id, self._id, await self._create_response_data())
+    @classmethod
+    @db.transactional
+    async def fetch_responses(
+        cls, question_ids: list[int], *, conn: Connection
+    ) -> list[Record]:
+        sql = """
+                SELECT qr.id, qr.question, qr.response, qrd.timestamp
+                FROM surveys.question_response qr
+                    JOIN surveys.question_response_datetime qrd
+                    ON qrd.response = qr.id 
+                WHERE qr.question = ANY($1::int[]);
+            """
+        return await conn.fetch(sql, question_ids)
 
-    async def view_response(self, response: dict) -> str:
-        return await self._get_discord_format(await self._from_storable_format(response["timestamp"]))
+    async def view_response(self, response: Record) -> str:
+        return await self._get_discord_format(
+            await self._from_storable_format(response["timestamp"])
+        )
 
     def get_input_text(self) -> discord.ui.InputText:
         return discord.ui.InputText(
@@ -223,15 +269,21 @@ class DateQuestion(InputTextResponse):
             return None
         converted = None
         try:
-            with warnings.catch_warnings(category=UnknownTimezoneWarning, action="error"):
+            with warnings.catch_warnings(
+                category=UnknownTimezoneWarning, action="error"
+            ):
                 if self.type == DateQuestionType.DATE:
-                    converted = datetime_parser(text, dayfirst=True, yearfirst=False).date()
+                    converted = datetime_parser(
+                        text, dayfirst=True, yearfirst=False
+                    ).date()
                 elif self.type == DateQuestionType.TIME:
                     t = datetime_parser(
                         text,
                         dayfirst=True,
                         yearfirst=False,
-                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc),
+                        default=datetime.datetime.min.replace(
+                            tzinfo=datetime.timezone.utc
+                        ),
                     ).timetz()
                     converted = t
                 elif self.type == DateQuestionType.DATETIME:
@@ -239,7 +291,9 @@ class DateQuestion(InputTextResponse):
                         text,
                         dayfirst=True,
                         yearfirst=False,
-                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc),
+                        default=datetime.datetime.min.replace(
+                            tzinfo=datetime.timezone.utc
+                        ),
                     )
                     converted = t
                 elif self.type == DateQuestionType.DURATION:
@@ -254,7 +308,9 @@ class DateQuestion(InputTextResponse):
         except OverflowError:
             return f"The Value `{text}` Is Too Large To Be Interpreted For Question {self.position + 1}"
 
-        if (self.minimum and converted < self.minimum) or (self.maximum and converted > self.maximum):
+        if (self.minimum and converted < self.minimum) or (
+            self.maximum and converted > self.maximum
+        ):
             if self.minimum and self.maximum:
                 return f"The Value `{text}` Must Be In The Range {await self._get_discord_format(self.minimum)} to {await self._get_discord_format(self.maximum)}"
 
@@ -289,13 +345,21 @@ class Settings(discord.ui.View):
         if self.selected is not None:
             self.set_min_max.disabled = False
             self.finish.disabled = False
-        await interaction.response.edit_message(view=self, embed=await self.question.display())
+        await interaction.response.edit_message(
+            view=self, embed=await self.question.display()
+        )
 
-    @discord.ui.button(label="Set Min/Max", disabled=True, style=discord.ButtonStyle.gray, row=2)
+    @discord.ui.button(
+        label="Set Min/Max", disabled=True, style=discord.ButtonStyle.gray, row=2
+    )
     async def set_min_max(self, button, interaction: discord.Interaction):
-        await interaction.response.send_modal(MinMaxModal(self.question, self, self.pending_min, self.pending_max))
+        await interaction.response.send_modal(
+            MinMaxModal(self.question, self, self.pending_min, self.pending_max)
+        )
 
-    @discord.ui.button(label="Finish", disabled=True, style=discord.ButtonStyle.gray, row=2)
+    @discord.ui.button(
+        label="Finish", disabled=True, style=discord.ButtonStyle.gray, row=2
+    )
     async def finish(self, button, interaction: discord.Interaction):
         self.interaction = interaction
         self.stop()
@@ -329,7 +393,9 @@ class TypeButton(discord.ui.Button):
 
 
 class MinMaxModal(discord.ui.Modal):
-    def __init__(self, question: DateQuestion, view: Settings, minimum: str, maximum: str):
+    def __init__(
+        self, question: DateQuestion, view: Settings, minimum: str, maximum: str
+    ):
         super().__init__(title="Enter Minimum And Maximum Values")
         self.q = question
         self.view = view
@@ -369,13 +435,19 @@ class MinMaxModal(discord.ui.Modal):
                 continue
             try:
                 if self.q.type == DateQuestionType.DATE:
-                    formated.append(datetime_parser(child.value, dayfirst=True, yearfirst=False).date())
+                    formated.append(
+                        datetime_parser(
+                            child.value, dayfirst=True, yearfirst=False
+                        ).date()
+                    )
                 elif self.q.type == DateQuestionType.TIME:
                     t = datetime_parser(
                         child.value,
                         dayfirst=True,
                         yearfirst=False,
-                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc),
+                        default=datetime.datetime.min.replace(
+                            tzinfo=datetime.timezone.utc
+                        ),
                     ).timetz()
                     formated.append(t)
                 elif self.q.type == DateQuestionType.DATETIME:
@@ -383,7 +455,9 @@ class MinMaxModal(discord.ui.Modal):
                         child.value,
                         dayfirst=True,
                         yearfirst=False,
-                        default=datetime.datetime.min.replace(tzinfo=datetime.timezone.utc),
+                        default=datetime.datetime.min.replace(
+                            tzinfo=datetime.timezone.utc
+                        ),
                     )
                     formated.append(t)
                 elif self.q.type == DateQuestionType.DURATION:
@@ -394,13 +468,17 @@ class MinMaxModal(discord.ui.Modal):
             except ParserError as e:
                 print(e)
                 formated.append(None)
-                errors.append(f"Could Not Convert `{child.value}` To A {self.q.type.human_readable()} Format")
+                errors.append(
+                    f"Could Not Convert `{child.value}` To A {self.q.type.human_readable()} Format"
+                )
             except OverflowError:
                 formated.append(None)
                 errors.append(f"The Value `{child.value}` Is Too Large")
         min_dt, max_dt = formated
         if not (min_dt is None or max_dt is None) and min_dt > max_dt:
-            errors.append(f"The Minimum {self.q.type.human_readable()} Cannot Be Larger Than The Maximum")
+            errors.append(
+                f"The Minimum {self.q.type.human_readable()} Cannot Be Larger Than The Maximum"
+            )
         else:
             # Only Set These If They Are Valid
             # If They Were Not Successfully Converted They Are Set To None

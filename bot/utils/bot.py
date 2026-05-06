@@ -48,8 +48,12 @@ class SurveyWolf(discord.Bot, ABC):
         # Do Some Additional Processing On Some Config Items
         self.config.update(
             {
-                "error_logging_webhook": await self._create_webhook(self.config["error_logging_webhook"]),
-                "server_join_leave_webhook": await self._create_webhook(self.config["server_join_leave_webhook"]),
+                "error_logging_webhook": await self._create_webhook(
+                    self.config["error_logging_webhook"]
+                ),
+                "server_join_leave_webhook": await self._create_webhook(
+                    self.config["server_join_leave_webhook"]
+                ),
             }
         )
 
@@ -58,7 +62,9 @@ class SurveyWolf(discord.Bot, ABC):
             return None
 
         try:
-            return await self.fetch_webhook(discord.Webhook.from_url(url, session=self.http._HTTPClient__session).id)
+            return await self.fetch_webhook(
+                discord.Webhook.from_url(url, session=self.http._HTTPClient__session).id
+            )
         except discord.NotFound:
             return None
 
@@ -77,7 +83,9 @@ class SurveyWolf(discord.Bot, ABC):
             yaml.safe_dump(self._raw_config, stream)
         self.config[key] = value
 
-    async def get_application_context(self, interaction: Interaction, cls=None) -> discord.ApplicationContext:
+    async def get_application_context(
+        self, interaction: Interaction, cls=None
+    ) -> discord.ApplicationContext:
         return await super().get_application_context(interaction, cls=cls or AdvContext)
 
     @staticmethod
@@ -95,14 +103,20 @@ class SurveyWolf(discord.Bot, ABC):
 
             texts.append(text[:ind])
             # The +1 is to remove the newline character
-            text = text[ind + 1:]
+            text = text[ind + 1 :]
         texts.append(text)
         return texts
 
-    async def on_application_command_error(self, ctx: ApplicationContext, exception: DiscordException) -> None:
+    async def on_application_command_error(
+        self, ctx: ApplicationContext, exception: DiscordException
+    ) -> None:
         if (w := self.config["error_logging_webhook"]) is not None:
             text = f"Error In {ctx.command.qualified_name} Guild ID: {ctx.guild_id} Channel ID: {ctx.channel_id}\n"
-            text += "".join(traceback.format_exception(type(exception), exception, exception.__traceback__))
+            text += "".join(
+                traceback.format_exception(
+                    type(exception), exception, exception.__traceback__
+                )
+            )
             for i in self._split_text(text, 1990, newline=True):
                 await w.send(f"```py\n{i}\n```")
         await ctx.respond(embed=await ef.error("An Error Occurred"))

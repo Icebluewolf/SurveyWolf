@@ -28,7 +28,9 @@ class InputTextResponse(SurveyQuestion, ABC):
         """
         raise NotImplementedError
 
-    async def send_question(self, interaction: discord.Interaction, group: list[Self] = None) -> discord.Interaction:
+    async def send_question(
+        self, interaction: discord.Interaction, group: list[Self] = None
+    ) -> discord.Interaction:
         modal = GetResponse(group or [self])
         await interaction.response.send_modal(modal)
         await modal.wait()
