@@ -5,7 +5,12 @@ from discord import slash_command, Option
 from discord.ext import pages
 
 from forms.survey.template import title_autocomplete, get_templates
-from questions.survey_question import from_db, SurveyQuestion, fetch_template_questions, fetch_question_responses
+from questions.survey_question import (
+    from_db,
+    SurveyQuestion,
+    fetch_template_questions,
+    fetch_question_responses,
+)
 from utils.database import database as db
 from utils import embed_factory as ef
 
@@ -42,7 +47,9 @@ class ResultsCog(discord.Cog):
             if name == str(template._id) or name == template.title:
                 break
         else:
-            return await ctx.respond(embed=await ef.fail(f"No Survey Named `{name}` Found"), ephemeral=True)
+            return await ctx.respond(
+                embed=await ef.fail(f"No Survey Named `{name}` Found"), ephemeral=True
+            )
 
         # Get Questions
         questions: list[SurveyQuestion] = await fetch_template_questions(template._id)
@@ -89,7 +96,11 @@ class ResultsCog(discord.Cog):
                         ]
                     )
                 page_groups.append(
-                    pages.PageGroup(label=question.title, description=question.description, pages=embeds)
+                    pages.PageGroup(
+                        label=question.title,
+                        description=question.description,
+                        pages=embeds,
+                    )
                 )
 
             pgn = pages.Paginator(pages=page_groups, show_menu=True, timeout=840)
@@ -111,10 +122,15 @@ class ResultsCog(discord.Cog):
 
             page_groups = []
             for n, group in enumerate(sorted(response_map.keys())):
-                response_embed = discord.Embed(title="Response ID", description=group[0])
+                response_embed = discord.Embed(
+                    title="Response ID", description=group[0]
+                )
                 e = discord.Embed(title="Responses", description="")
                 embeds = []
-                for response in sorted(response_map[group], key=lambda x: question_map[x["question"]].position):
+                for response in sorted(
+                    response_map[group],
+                    key=lambda x: question_map[x["question"]].position,
+                ):
                     question = question_map[response["question"]]
                     r = await question.view_response(response)
                     if len(r) == 0:
@@ -130,7 +146,9 @@ class ResultsCog(discord.Cog):
                 if len(embeds) == 0:
                     # If the survey only has option questions and all questions were skipped
                     continue
-                page_groups.append(pages.PageGroup(label=f"Response {n + 1}", pages=embeds))
+                page_groups.append(
+                    pages.PageGroup(label=f"Response {n + 1}", pages=embeds)
+                )
 
             pgn = pages.Paginator(pages=page_groups, show_menu=True, timeout=840)
             await pgn.respond(ctx.interaction, ephemeral=True)

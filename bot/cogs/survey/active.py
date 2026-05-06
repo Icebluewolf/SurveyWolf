@@ -14,10 +14,22 @@ class ActiveSurveyCommands(Cog):
     async def send(
         self,
         ctx: ApplicationContext,
-        name: Option(str, autocomplete=title_autocomplete, description="The Survey Template To Send"),
-        message: Option(str, description="A Message To Accompany The Survey", required=False, default=None),
+        name: Option(
+            str,
+            autocomplete=title_autocomplete,
+            description="The Survey Template To Send",
+        ),
+        message: Option(
+            str,
+            description="A Message To Accompany The Survey",
+            required=False,
+            default=None,
+        ),
         duration_override: Option(
-            str, description="An Override For The Default Time Of The Template", required=False, default=None
+            str,
+            description="An Override For The Default Time Of The Template",
+            required=False,
+            default=None,
         ),
     ):
         if duration_override:
@@ -36,7 +48,9 @@ class ActiveSurveyCommands(Cog):
             if name == str(template._id) or name == template.title:
                 break
         else:
-            return await ctx.respond(embed=await ef.fail(f"No Survey Named `{name}` Found"), ephemeral=True)
+            return await ctx.respond(
+                embed=await ef.fail(f"No Survey Named `{name}` Found"), ephemeral=True
+            )
         if template.duration is None and duration_override is None:
             return await ctx.respond(
                 embed=await ef.fail(
@@ -46,7 +60,9 @@ class ActiveSurveyCommands(Cog):
             )
         survey = ActiveSurvey(template, duration_override)
         await survey.save()
-        await ctx.interaction.respond(embed=await ef.success("The Survey Was Started"), ephemeral=True)
+        await ctx.interaction.respond(
+            embed=await ef.success("The Survey Was Started"), ephemeral=True
+        )
         await survey.send(ctx.interaction, message)
 
     @Cog.listener(once=True)

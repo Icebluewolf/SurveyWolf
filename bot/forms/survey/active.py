@@ -15,7 +15,9 @@ CONSENT_VERSION = 1
 
 
 class ActiveSurvey:
-    def __init__(self, template: int | SurveyTemplate, end: datetime | timedelta | None = None):
+    def __init__(
+        self, template: int | SurveyTemplate, end: datetime | timedelta | None = None
+    ):
         self.template: int | SurveyTemplate = template
         if end is None:
             self.end = datetime.now(tz=UTC) + template.duration
@@ -52,13 +54,20 @@ class ActiveSurvey:
         else:
             template = self.template
         self._id = await db.fetchval(
-            sql, self.end.astimezone(UTC).replace(tzinfo=None), template, self._channel_id, self._message_id
+            sql,
+            self.end.astimezone(UTC).replace(tzinfo=None),
+            template,
+            self._channel_id,
+            self._message_id,
         )
 
     async def send(self, interaction: discord.Interaction, message: str):
         v = ActiveSurveyView(self)
         await interaction.followup.send(
-            embeds=[await ef.general("Take The Survey Below!", message=message), await self.template.summary(self.end)],
+            embeds=[
+                await ef.general("Take The Survey Below!", message=message),
+                await self.template.summary(self.end),
+            ],
             view=v,
         )
         await self.start_timer(v.end_survey)
@@ -82,13 +91,20 @@ class ActiveSurveyView(discord.ui.View):
     async def end_survey(self):
         await self.survey.end_survey()
         self.disable_all_items()
-        await self.message.edit(embeds=[await ef.general("This Survey Has Ended"), self.message.embeds[1]], view=self)
+        await self.message.edit(
+            embeds=[await ef.general("This Survey Has Ended"), self.message.embeds[1]],
+            view=self,
+        )
         self.stop()
 
 
 class SurveyButton(discord.ui.Button):
     def __init__(self, custom_id: int):
-        super().__init__(label="Take Survey", style=discord.ButtonStyle.blurple, custom_id=str(custom_id))
+        super().__init__(
+            label="Take Survey",
+            style=discord.ButtonStyle.blurple,
+            custom_id=str(custom_id),
+        )
         self.encrypted_user_id: str | None = None
 
     async def callback(self, interaction: discord.Interaction):
@@ -97,7 +113,9 @@ class SurveyButton(discord.ui.Button):
         # Check If Time Is Up On The Survey
         if self.view.survey.end and self.view.survey.end < datetime.now(tz=UTC):
             await self.view.end_survey()
-            return await interaction.respond(embed=await ef.fail("Sorry! This Survey Has Ended"), ephemeral=True)
+            return await interaction.respond(
+                embed=await ef.fail("Sorry! This Survey Has Ended"), ephemeral=True
+            )
 
         # await interaction.response.defer()
 
@@ -106,7 +124,10 @@ class SurveyButton(discord.ui.Button):
 
         # Check If The User Has Completed The Data Sharing Consent Form
         sql = """SELECT version_id FROM surveys.data_sharing_consent WHERE user_id = $1 AND guild_id = $2;"""
-        if await db.fetchval(sql, str(interaction.user.id), str(interaction.guild_id)) != CONSENT_VERSION:
+        if (
+            await db.fetchval(sql, str(interaction.user.id), str(interaction.guild_id))
+            != CONSENT_VERSION
+        ):
             v = DataSharingConsent()
             return await interaction.respond(embed=v.embed, view=v, ephemeral=True)
 
@@ -120,7 +141,9 @@ class SurveyButton(discord.ui.Button):
         # Check If The User Has Responded To The Survey The Maximum Number Of Times
         sql = """SELECT DISTINCT max(response_num) FROM surveys.responses 
                 WHERE user_id=$2 and active_survey_id = $1;"""
-        times_taken = await db.fetchval(sql, int(self.view.survey._id), self.encrypted_user_id)
+        times_taken = await db.fetchval(
+            sql, int(self.view.survey._id), self.encrypted_user_id
+        )
         if times_taken is None:
             times_taken = 0
         if times_taken >= template.entries_per_user:
@@ -140,7 +163,10 @@ class SurveyButton(discord.ui.Button):
             if total_responses >= template.max_entries:
                 await self.view.end_survey()
                 return await interaction.respond(
-                    embed=await ef.fail("Sorry! This Survey Has Reached The Maximum Amount Of Entries"), ephemeral=True
+                    embed=await ef.fail(
+                        "Sorry! This Survey Has Reached The Maximum Amount Of Entries"
+                    ),
+                    ephemeral=True,
                 )
 
         # Finally Send The Survey
@@ -181,12 +207,16 @@ class DataSharingConsent(discord.ui.View):
         )
         now = datetime.now(tz=UTC)
         await db.execute(
-            sql, str(interaction.user.id), str(interaction.guild_id), now.replace(tzinfo=None), CONSENT_VERSION
+            sql,
+            str(interaction.user.id),
+            str(interaction.guild_id),
+            now.replace(tzinfo=None),
+            CONSENT_VERSION,
         )
         message = (
             f"Please Click The Button To Take The Survey Again!\n\nThis Form Was Completed By "
             f"{interaction.user.name} (`{interaction.user.id}`) In {interaction.guild.name} "
-            f"(`{interaction.guild_id}`) At {discord.utils.format_dt(now, "F")}"
+            f"(`{interaction.guild_id}`) At {discord.utils.format_dt(now, 'F')}"
         )
         await interaction.edit(embed=await ef.success(message), view=None)
 

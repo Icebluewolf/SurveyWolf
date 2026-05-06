@@ -73,7 +73,9 @@ class SurveyQuestion(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def send_question(self, interaction: discord.Interaction) -> discord.Interaction:
+    async def send_question(
+        self, interaction: discord.Interaction
+    ) -> discord.Interaction:
         """
         Sends The Question To A User Taking The Survey And Gathers The Response
         :param interaction: The interaction that is pending a response from the prior action
@@ -106,7 +108,14 @@ class SurveyQuestion(ABC):
         """
         if self._id:
             sql = """UPDATE surveys.questions SET text=$1, position=$2, required=$3, description=$4 WHERE id=$5;"""
-            await conn.execute(sql, self.title, self.position, self.required, self.description, self._id)
+            await conn.execute(
+                sql,
+                self.title,
+                self.position,
+                self.required,
+                self.description,
+                self._id,
+            )
         else:
             sql = """INSERT INTO surveys.questions (text, position, survey_id, required, description, type) 
             VALUES ($1, $2, $3, $4, $5, $6) RETURNING id;"""
@@ -162,7 +171,9 @@ class SurveyQuestion(ABC):
     @classmethod
     @abstractmethod
     @db.transactional
-    async def fetch_responses(cls, question_ids: list[int], *, conn: Connection) -> list[Record]:
+    async def fetch_responses(
+        cls, question_ids: list[int], *, conn: Connection
+    ) -> list[Record]:
         """
         Fetch the responses for the given Question IDs.
         The Question IDs must match the type of question the operation is being executed on.
@@ -246,7 +257,9 @@ def question_maps():
         QuestionType.MULTIPLE_CHOICE: MultipleChoice,
         QuestionType.DATETIME: DateQuestion,
     }
-    cls_question: dict[type[SurveyQuestion], QuestionType] = {v: k for k, v in question_cls.items()}
+    cls_question: dict[type[SurveyQuestion], QuestionType] = {
+        v: k for k, v in question_cls.items()
+    }
     return question_cls, cls_question
 
 

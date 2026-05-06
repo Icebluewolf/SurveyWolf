@@ -6,7 +6,9 @@ from collections.abc import Callable
 
 
 class Timer:
-    def __init__(self, time: timedelta | datetime | str, callback: Callable, *args, **kwargs):
+    def __init__(
+        self, time: timedelta | datetime | str, callback: Callable, *args, **kwargs
+    ):
         """
         Creates a timer that starts now and ends after the duration. Calls the function with args and kwargs on
         completion.

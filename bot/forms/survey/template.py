@@ -150,7 +150,11 @@ class SurveyTemplate:
         return e
 
     async def send_questions(
-        self, interaction: discord.Interaction, encrypted_user_id: str, response_num: int, active_id: int
+        self,
+        interaction: discord.Interaction,
+        encrypted_user_id: str,
+        response_num: int,
+        active_id: int,
     ):
         input_text_group: list[InputTextResponse] = []
         for question in sorted(self.questions, key=lambda x: x.position):
@@ -159,29 +163,39 @@ class SurveyTemplate:
                 # If the group is full send it
                 if len(input_text_group) == 5:
                     interaction = await do_modal_transition(interaction)
-                    interaction = await question.send_question(interaction, input_text_group)
+                    interaction = await question.send_question(
+                        interaction, input_text_group
+                    )
                     input_text_group = []
                 continue
 
             # If the next question was not added to the group but there is pending questions in the group
             if len(input_text_group) > 0:
                 interaction = await do_modal_transition(interaction)
-                interaction = await input_text_group[-1].send_question(interaction, input_text_group)
+                interaction = await input_text_group[-1].send_question(
+                    interaction, input_text_group
+                )
                 input_text_group = []
 
             interaction = await question.send_question(interaction)
         # There are no more questions but still questions pending in the group
         if len(input_text_group) > 0:
             interaction = await do_modal_transition(interaction)
-            interaction = await input_text_group[-1].send_question(interaction, input_text_group)
+            interaction = await input_text_group[-1].send_question(
+                interaction, input_text_group
+            )
 
         async with db.transaction() as conn:
             sql = """INSERT INTO surveys.responses (user_id, response_num, active_survey_id, template_id) 
                     VALUES ($1, $2, $3, $4) RETURNING id;"""
-            response_id = await conn.fetchval(sql, encrypted_user_id, response_num, active_id, self._id)
+            response_id = await conn.fetchval(
+                sql, encrypted_user_id, response_num, active_id, self._id
+            )
             for question in self.questions:
                 await question.save_response(response_id, conn=conn)
-        await interaction.respond(embed=await ef.success("You Have Completed The Survey!"), ephemeral=True)
+        await interaction.respond(
+            embed=await ef.success("You Have Completed The Survey!"), ephemeral=True
+        )
 
 
 class ModalTransition(discord.ui.View):
@@ -215,7 +229,9 @@ async def title_autocomplete(ctx: discord.AutocompleteContext):
     templates = await get_templates(ctx.interaction.guild_id)
     for template in templates:
         if template.title.startswith(ctx.value):
-            match.append(discord.OptionChoice(name=template.title, value=str(template._id)))
+            match.append(
+                discord.OptionChoice(name=template.title, value=str(template._id))
+            )
             if len(match) == 24:
                 break
     return match

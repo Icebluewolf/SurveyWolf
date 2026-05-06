@@ -8,7 +8,6 @@ from utils.database import database as db
 
 
 class TextQuestion(InputTextResponse):
-
     def __init__(self, title: str, survey_id: int):
         # This constructor is meant for creating new questions
         super().__init__(title, survey_id)
@@ -24,7 +23,10 @@ class TextQuestion(InputTextResponse):
     async def display(self) -> discord.Embed:
         e = discord.Embed(title=self.title, description=self.description)
         e.add_field(name="Required", value=str(self.required))
-        e.add_field(name="Length", value=f"Between {self.min_length} And {self.max_length} Inclusive")
+        e.add_field(
+            name="Length",
+            value=f"Between {self.min_length} And {self.max_length} Inclusive",
+        )
         return e
 
     async def short_display(self) -> str:
@@ -82,7 +84,9 @@ class TextQuestion(InputTextResponse):
 
     @classmethod
     @db.transactional
-    async def fetch_responses(cls, question_ids: list[int], *, conn: Connection) -> list[Record]:
+    async def fetch_responses(
+        cls, question_ids: list[int], *, conn: Connection
+    ) -> list[Record]:
         sql = """
             SELECT qr.id, qr.question, qr.response, qrt.text
             FROM surveys.question_response qr
@@ -146,7 +150,9 @@ class GetTextQuestionInfo(GetBaseInfo):
             else:
                 errors.append("Minimum Length Needs To Be Between 0 And 4000")
         except ValueError:
-            errors.append("Minimum Length Needs To Be A Number Between 0 And 4000. Do Not Use `,` Or `.`")
+            errors.append(
+                "Minimum Length Needs To Be A Number Between 0 And 4000. Do Not Use `,` Or `.`"
+            )
 
         try:
             maximum = int(self.children[3].value)
@@ -155,6 +161,8 @@ class GetTextQuestionInfo(GetBaseInfo):
             else:
                 errors.append("Maximum Length Needs To Be Between 1 And 4000")
         except ValueError:
-            errors.append("Maximum Length Needs To Be A Number Between 1 And 4000. Do Not Use `,` Or `.`")
+            errors.append(
+                "Maximum Length Needs To Be A Number Between 1 And 4000. Do Not Use `,` Or `.`"
+            )
 
         return errors

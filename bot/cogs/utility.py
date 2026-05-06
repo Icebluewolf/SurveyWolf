@@ -28,7 +28,11 @@ class Utility(discord.Cog):
 
         e = await ef.general(
             title=self.bot.user.name
-            + (f"#{self.bot.user.discriminator}" if self.bot.user.discriminator != "0" else ""),
+            + (
+                f"#{self.bot.user.discriminator}"
+                if self.bot.user.discriminator != "0"
+                else ""
+            ),
             message=desc,
         )
         e.add_field(
@@ -36,8 +40,13 @@ class Utility(discord.Cog):
             value="If You Have An Issue With The Bot Please Join The Support Server [Here]("
             'https://discord.gg/f39cJ9D/ "Survey Wolf Official Support Server")',
         )
-        e.add_field(name="Credits", value="Main Bot Developer: icewolfy (451848182327148554)")
-        e.add_field(name="Technical", value="Uses Python V3 And [Pycord](https://pycord.dev/) V2. Database: PostgreSQL")
+        e.add_field(
+            name="Credits", value="Main Bot Developer: icewolfy (451848182327148554)"
+        )
+        e.add_field(
+            name="Technical",
+            value="Uses Python V3 And [Pycord](https://pycord.dev/) V2. Database: PostgreSQL",
+        )
         e.add_field(
             name="Hosting",
             value="Hosted On Digital Ocean",
