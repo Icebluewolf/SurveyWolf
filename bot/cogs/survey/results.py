@@ -6,7 +6,6 @@ from discord.ext import pages
 
 from forms.survey.template import title_autocomplete, get_templates
 from questions.survey_question import (
-    from_db,
     SurveyQuestion,
     fetch_template_questions,
     fetch_question_responses,
