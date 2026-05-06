@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import discord
 from asyncpg import Connection, Record
 from discord import Interaction
@@ -65,6 +67,19 @@ class MultipleChoice(SurveyQuestion):
         """
         return await cls.load(q, await db.fetch(sql, id))
 
+    @classmethod
+    @db.transactional
+    async def fetch_by_template(cls, template_id: int, conn: Connection):
+        sql = """
+                SELECT * FROM surveys.questions JOIN surveys.question_multiple_choice qd ON questions.id = qd.id JOIN surveys.question_multiple_choice_option mco ON qd.id = mco.question_id
+                WHERE questions.survey_id=$1;
+            """
+        result = await conn.fetch(sql, template_id)
+        d = defaultdict(list)
+        for row in result:
+            d[row["id"]].append(row)
+        return [await cls.load(v[0], v) for k, v in d.items()]
+
     async def send_question(self, interaction: discord.Interaction) -> discord.Interaction:
         v = ResponseView(self)
         await interaction.respond(view=v, embed=await v.create_embed(), ephemeral=True)
@@ -91,6 +106,18 @@ class MultipleChoice(SurveyQuestion):
 
     async def short_display(self) -> str:
         return f"{self.title} {self.description}"
+
+    @classmethod
+    @db.transactional
+    async def fetch_responses(cls, question_ids: list[int], *, conn: Connection) -> list[Record]:
+        sql = """
+                SELECT qr.id, qr.question, qr.response, qrmc.selected
+                FROM surveys.question_response qr
+                    JOIN surveys.question_response_multiple_choice qrmc
+                    ON qrmc.response = qr.id 
+                WHERE qr.question = ANY($1::int[]);
+            """
+        return await conn.fetch(sql, question_ids)
 
     async def view_response(self, response: Record) -> str:
         options = {x.id: x.text for x in self.options}

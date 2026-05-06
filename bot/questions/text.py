@@ -57,6 +57,15 @@ class TextQuestion(InputTextResponse):
             """
         return await cls.load(await db.fetch_one(sql, id))
 
+    @classmethod
+    @db.transactional
+    async def fetch_by_template(cls, template_id: int, conn: Connection):
+        sql = """
+            SELECT * FROM surveys.questions JOIN surveys.question_text qd ON questions.id = qd.id
+            WHERE questions.survey_id=$1;
+        """
+        return [await cls.load(x) for x in await conn.fetch(sql, template_id)]
+
     @db.transactional
     async def save_response(self, response_id: int, *, conn: Connection) -> int:
         resp = await super().save_response(conn=conn, response_id=response_id)
@@ -70,6 +79,18 @@ class TextQuestion(InputTextResponse):
         q.min_length = row["min_length"]
         q.max_length = row["max_length"]
         return q
+
+    @classmethod
+    @db.transactional
+    async def fetch_responses(cls, question_ids: list[int], *, conn: Connection) -> list[Record]:
+        sql = """
+            SELECT qr.id, qr.question, qr.response, qrt.text
+            FROM surveys.question_response qr
+                JOIN surveys.question_response_text qrt
+                ON qrt.response = qr.id 
+            WHERE qr.question = ANY($1::int[]);
+        """
+        return await conn.fetch(sql, question_ids)
 
     async def view_response(self, response: Record) -> str:
         result = response["text"]

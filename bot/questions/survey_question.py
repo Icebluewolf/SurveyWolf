@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import discord
 from asyncpg import Record, Connection
 
@@ -46,6 +48,18 @@ class SurveyQuestion(ABC):
         Gets The Question From The Database By ID
         :param id: The ID of the question
         :return: An instance of the class it is called on
+        """
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    @db.transactional
+    async def fetch_by_template(cls, template_id: int, conn: Connection):
+        """
+        Gets All Questions From The Database Associated With The Given Template
+        :param template_id: The Template ID to fetch questions from
+        :param conn: The database connection
+        :return: A list of all questions of this type associated with the template
         """
         raise NotImplementedError
 
@@ -137,6 +151,19 @@ class SurveyQuestion(ABC):
         q._id = row["id"]
         return q
 
+    @classmethod
+    @abstractmethod
+    @db.transactional
+    async def fetch_responses(cls, question_ids: list[int], *, conn: Connection) -> list[Record]:
+        """
+        Fetch the responses for the given Question IDs.
+        The Question IDs must match the type of question the operation is being executed on.
+        :param question_ids: A list of question IDs corresponding to questions of the type
+        :param conn: The database connection
+        :return: A list of Records in the corresponding question types format.
+        """
+        raise NotImplementedError
+
     @abstractmethod
     async def view_response(self, response: Record) -> str:
         """
@@ -216,3 +243,21 @@ def question_maps():
 
 async def from_db(row: Record) -> SurveyQuestion:
     return await question_maps()[0][QuestionType(row["type"])].fetch(row["id"])
+
+
+async def fetch_template_questions(template_id: int) -> list[SurveyQuestion]:
+    result = []
+    for q_type in question_maps()[0].values():
+        result.extend(await q_type.fetch_by_template(template_id))
+    return result
+
+
+async def fetch_question_responses(questions: list[SurveyQuestion]) -> list[Record]:
+    d = defaultdict(list)
+    for q in questions:
+        d[type(q)].append(q._id)
+
+    result = []
+    for q_type, ques in d.items():
+        result.extend(await q_type.fetch_responses(ques))
+    return result

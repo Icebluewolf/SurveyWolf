@@ -45,6 +45,15 @@ class DateQuestion(InputTextResponse):
         """
         return await cls.load(await db.fetch_one(sql, id))
 
+    @classmethod
+    @db.transactional
+    async def fetch_by_template(cls, template_id: int, conn: Connection):
+        sql = """
+                SELECT * FROM surveys.questions JOIN surveys.question_datetime qd ON questions.id = qd.id
+                WHERE questions.survey_id=$1;
+            """
+        return [await cls.load(x) for x in await conn.fetch(sql, template_id)]
+
     def __init__(self, title: str, survey_id: int):
         # This constructor is meant for creating new questions
         super().__init__(title, survey_id)
@@ -175,6 +184,18 @@ class DateQuestion(InputTextResponse):
         sql = """INSERT INTO surveys.question_response_datetime (response, timestamp) VALUES ($1, $2);"""
         await conn.execute(sql, resp, await self._get_storable_format(self.value))
         return resp
+
+    @classmethod
+    @db.transactional
+    async def fetch_responses(cls, question_ids: list[int], *, conn: Connection) -> list[Record]:
+        sql = """
+                SELECT qr.id, qr.question, qr.response, qrd.timestamp
+                FROM surveys.question_response qr
+                    JOIN surveys.question_response_datetime qrd
+                    ON qrd.response = qr.id 
+                WHERE qr.question = ANY($1::int[]);
+            """
+        return await conn.fetch(sql, question_ids)
 
     async def view_response(self, response: Record) -> str:
         return await self._get_discord_format(await self._from_storable_format(response["timestamp"]))
